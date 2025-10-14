@@ -624,7 +624,12 @@ class LibraryManagementSystem:
                 f"🎉 Welcome back, {display_name}!\n\nRole: {self.current_user['role']}",
             )
 
-            self.show_welcome_screen()
+            # Check role and redirect accordingly
+            if self.current_user['role'] == 'Admin':
+                from admin.manage_book import AdminDashboard
+                AdminDashboard(self.root, self)
+            else:
+                self.show_welcome_screen()  # For now, regular users see welcome screen
 
         login_btn = tk.Button(
             form_frame,
