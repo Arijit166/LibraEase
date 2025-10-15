@@ -613,7 +613,9 @@ class LibraryManagementSystem:
                 from admin.manage_book import AdminDashboard
                 AdminDashboard(self.root, self)
             else:
-                self.show_welcome_screen()
+                from user.book import UserBooksPage
+                UserBooksPage(self.root, self)
+    
 
         login_btn = tk.Button(
             form_frame,
