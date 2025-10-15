@@ -411,7 +411,12 @@ class AdminDashboard:
             lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
         )
         
-        canvas.create_window((0, 0), window=self.books_container, anchor="nw")
+        # <CHANGE> ensure the inner frame matches the canvas width so the grid stretches full screen
+        self._books_window_id = canvas.create_window((0, 0), window=self.books_container, anchor="nw")
+        def on_canvas_configure(event):
+            canvas.itemconfigure(self._books_window_id, width=event.width)
+        canvas.bind("<Configure>", on_canvas_configure)
+
         canvas.configure(yscrollcommand=scrollbar.set)
         
         # Style scrollbar
@@ -419,18 +424,21 @@ class AdminDashboard:
         style.theme_use("clam")
         style.configure(
             "Vertical.TScrollbar",
-            background="#334155",
+            background="#475569",      
             troughcolor="#1e293b",
             bordercolor="#1e293b",
-            arrowcolor="#94a3b8"
+            arrowcolor="#cbd5e1",      
+            darkcolor="#334155",      
+            lightcolor="#64748b"       
+        )
+        style.map(
+            "Vertical.TScrollbar",
+            background=[("active", "#64748b"), ("disabled", "#334155")] 
         )
         
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
         
-       # Before the mousewheel binding
-        self.main_canvas = canvas  # Store reference
-
         # Enable mousewheel scrolling
         def _on_mousewheel(event):
             canvas.yview_scroll(int(-1*(event.delta/120)), "units")
@@ -457,24 +465,28 @@ class AdminDashboard:
                 font=("Helvetica", 16),
                 fg="#64748b",
                 bg=self.APP_BG
-            ).pack(pady=50)
+            ).grid(pady=50)
             return
         
         # Convert DataFrame to list of dicts for compatibility
         books = books_df.to_dict('records')
         
-        # Display books in grid (3 columns)
-        row_frame = None
+        # <CHANGE> display books in a responsive 4-column grid with equal spacing and full-width usage
+        cols = 4
+        for c in range(cols):
+            self.books_container.grid_columnconfigure(c, weight=1, uniform="bookcol")
+
         for idx, book in enumerate(books):
-            if idx % 3 == 0:
-                row_frame = tk.Frame(self.books_container, bg=self.APP_BG)
-                row_frame.pack(fill="x", pady=10, padx=10)  # Added padx
-            
-            self.create_book_card(row_frame, book)
+            r = idx // cols
+            c = idx % cols
+            cell = tk.Frame(self.books_container, bg=self.APP_BG)
+            cell.grid(row=r, column=c, padx=20, pady=20, sticky="nsew")
+            self.create_book_card(cell, book)
 
     def create_book_card(self, parent, book):
-        card = tk.Frame(parent, bg=self.CARD_BG, bd=0, width=230, height=450)
-        card.pack(side="left", padx=10, pady=10)
+        # <CHANGE> make the card expand to fill its grid cell; remove fixed width to help occupy the full row
+        card = tk.Frame(parent, bg=self.CARD_BG, bd=0, height=450)
+        card.pack(fill="both", expand=True)
         card.pack_propagate(False)
         
         # Shadow effect
@@ -484,8 +496,8 @@ class AdminDashboard:
         card.lift()
         
         # Image
-        img_frame = tk.Frame(card, bg="#334155", width=200, height=250)
-        img_frame.pack(padx=15, pady=15)
+        img_frame = tk.Frame(card, bg="#334155", height=250)
+        img_frame.pack(padx=15, pady=15, fill="x")
         img_frame.pack_propagate(False)
         
         try:
@@ -718,12 +730,13 @@ class AdminDashboard:
                     messagebox.showwarning("Warning", f"Could not save image: {e}")
             
             # Create book with specific ID
-            # You'll need to modify create_book to accept an id parameter
             self.db.create_book_with_id(book_id, name, author, saved_image_path)
             
-            messagebox.showinfo("Success", "Book added successfully!")
-            dialog.destroy()
-            self.show_book_management()
+            dialog.destroy()  # Close dialog first
+            self.show_book_management()  # Refresh the book grid
+            
+            # Show success message after refresh
+            self.root.after(100, lambda: messagebox.showinfo("Success", "Book added successfully!"))
         
         add_book_btn = tk.Button(
             form_frame,
