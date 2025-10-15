@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
 import json
+from database import DatabaseManager
 import os
 
 class LibraryManagementSystem:
@@ -15,7 +16,7 @@ class LibraryManagementSystem:
 
         # Admin passkey
         self.ADMIN_PASSKEY = "admin123"
-
+        self.db = DatabaseManager()
         # Data files
         self.users_file = "users.json"
 
@@ -40,10 +41,7 @@ class LibraryManagementSystem:
         self.root.geometry(f"{width}x{height}+{x}+{y}")
 
     def init_data_files(self):
-        # Initialize users file
-        if not os.path.exists(self.users_file):
-            with open(self.users_file, 'w') as f:
-                json.dump({}, f)
+        pass
 
     def clear_window(self):
         for widget in self.root.winfo_children():
@@ -51,9 +49,21 @@ class LibraryManagementSystem:
 
     def create_background(self, parent):
         """Create a single-color dark background (replaces gradient)."""
-        canvas = tk.Canvas(parent, width=1400, height=800, highlightthickness=0, bd=0)
+        # Create a canvas that fills the entire window
+        canvas = tk.Canvas(parent, highlightthickness=0, bd=0)
         canvas.pack(fill="both", expand=True)
-        canvas.create_rectangle(0, 0, 1400, 800, fill=self.APP_BG, outline=self.APP_BG)
+        
+        def update_bg(event=None):
+            # Update rectangle size when window is resized
+            width = parent.winfo_width()
+            height = parent.winfo_height()
+            canvas.delete("bg")  # Remove old background
+            canvas.create_rectangle(0, 0, width, height, fill=self.APP_BG, outline=self.APP_BG, tags="bg")
+        
+        # Bind to resize events
+        parent.bind("<Configure>", update_bg)
+        # Initial draw
+        update_bg()
         return canvas
 
     def show_welcome_screen(self):
@@ -390,7 +400,7 @@ class LibraryManagementSystem:
             fg="#fde68a",
             insertbackground="#fde68a",
         )
-        # Create Account button (always shown at bottom, after passkey if visible)
+        # In handle_signup function (inside show_signup method):
         def handle_signup():
             first_name = first_entry.get().strip()
             last_name = last_entry.get().strip()
@@ -398,7 +408,7 @@ class LibraryManagementSystem:
             password = password_entry.get().strip()
             role = role_var.get()
 
-            # Basic validation
+            # Basic validation (keep existing validation)
             if not first_name or not last_name or not email or not password:
                 messagebox.showerror("Error", "Please fill in all fields!")
                 return
@@ -421,33 +431,18 @@ class LibraryManagementSystem:
                     messagebox.showerror("Error", "Invalid admin passkey!")
                     return
 
-            try:
-                with open(self.users_file, 'r') as f:
-                    users = json.load(f)
-            except:
-                users = {}
-
-            # Now keyed by email
-            if email in users:
+            # Use database manager
+            if self.db.user_exists(email):
                 messagebox.showerror("Error", "Email already exists! Please log in.")
                 return
 
-            users[email] = {
-                "first_name": first_name,
-                "last_name": last_name,
-                "password": password,
-                "role": role
-            }
-
-            with open(self.users_file, 'w') as f:
-                json.dump(users, f, indent=4)
+            self.db.create_user(email, first_name, last_name, password, role)
 
             messagebox.showinfo(
                 "Success",
                 f"🎉 Account created successfully as {role}!\n\nYou can now login.",
             )
             self.show_login()
-
         signup_btn = tk.Button(
             form_frame,
             text="CREATE ACCOUNT",
@@ -589,6 +584,7 @@ class LibraryManagementSystem:
         )
         password_entry.pack(fill="x", padx=15, pady=12)
 
+        # In handle_login function (inside show_login method):
         def handle_login():
             email = email_entry.get().strip().lower()
             password = password_entry.get().strip()
@@ -597,28 +593,16 @@ class LibraryManagementSystem:
                 messagebox.showerror("Error", "Please fill in all fields!")
                 return
 
-            try:
-                with open(self.users_file, 'r') as f:
-                    users = json.load(f)
-            except:
-                users = {}
-
-            if email not in users:
-                messagebox.showerror("Error", "Email not found!\n\nPlease sign up first.")
+            # Use database manager
+            user_data = self.db.validate_login(email, password)
+            
+            if user_data is None:
+                messagebox.showerror("Error", "Invalid email or password!")
                 return
 
-            if users[email]["password"] != password:
-                messagebox.showerror("Error", "Incorrect password!")
-                return
-
-            self.current_user = {
-                "email": email,
-                "role": users[email]["role"],
-                "first_name": users[email].get("first_name", ""),
-                "last_name": users[email].get("last_name", ""),
-            }
-
+            self.current_user = user_data
             display_name = self.current_user["first_name"] or email
+            
             messagebox.showinfo(
                 "Success",
                 f"🎉 Welcome back, {display_name}!\n\nRole: {self.current_user['role']}",
@@ -629,7 +613,7 @@ class LibraryManagementSystem:
                 from admin.manage_book import AdminDashboard
                 AdminDashboard(self.root, self)
             else:
-                self.show_welcome_screen()  # For now, regular users see welcome screen
+                self.show_welcome_screen()
 
         login_btn = tk.Button(
             form_frame,
