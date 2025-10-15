@@ -4,6 +4,8 @@ from tkinter import messagebox
 import json
 from database import DatabaseManager
 import os
+from dotenv import load_dotenv
+load_dotenv()
 
 class LibraryManagementSystem:
     def __init__(self, root):
@@ -15,7 +17,7 @@ class LibraryManagementSystem:
         self.center_window(1400, 800)
 
         # Admin passkey
-        self.ADMIN_PASSKEY = "admin123"
+        self.ADMIN_PASSKEY = os.getenv("ADMIN_PASSKEY")
         self.db = DatabaseManager()
         # Data files
         self.users_file = "users.json"
@@ -335,7 +337,7 @@ class LibraryManagementSystem:
         role_frame = tk.Frame(form_frame, bg=card_bg)
         role_frame.pack(anchor="w", pady=(0, 10))
 
-        # Custom styled radio buttons with better visual feedback
+        # Custom styled radio buttons
         user_radio = tk.Radiobutton(
             role_frame,
             text="User",
@@ -380,7 +382,7 @@ class LibraryManagementSystem:
             text="🔑 Admin Passkey",
             font=("Helvetica", 12, "bold"),
             bg=card_bg,
-            fg="#fbbf24",  # Amber color for visibility
+            fg="#fbbf24",
         )
 
         passkey_frame_inner = tk.Frame(
@@ -388,7 +390,7 @@ class LibraryManagementSystem:
             bg="#2c1e10", 
             bd=0, 
             highlightthickness=2, 
-            highlightbackground="#f59e0b"  # Brighter amber border
+            highlightbackground="#f59e0b"
         )
         passkey_entry = tk.Entry(
             passkey_frame_inner,
@@ -400,7 +402,7 @@ class LibraryManagementSystem:
             fg="#fde68a",
             insertbackground="#fde68a",
         )
-        # In handle_signup function (inside show_signup method):
+
         def handle_signup():
             first_name = first_entry.get().strip()
             last_name = last_entry.get().strip()
@@ -408,7 +410,6 @@ class LibraryManagementSystem:
             password = password_entry.get().strip()
             role = role_var.get()
 
-            # Basic validation (keep existing validation)
             if not first_name or not last_name or not email or not password:
                 messagebox.showerror("Error", "Please fill in all fields!")
                 return
@@ -431,18 +432,33 @@ class LibraryManagementSystem:
                     messagebox.showerror("Error", "Invalid admin passkey!")
                     return
 
-            # Use database manager
             if self.db.user_exists(email):
                 messagebox.showerror("Error", "Email already exists! Please log in.")
                 return
 
             self.db.create_user(email, first_name, last_name, password, role)
 
+            # Set current user
+            self.current_user = {
+                'email': email,
+                'first_name': first_name,
+                'last_name': last_name,
+                'role': role
+            }
+
             messagebox.showinfo(
                 "Success",
-                f"🎉 Account created successfully as {role}!\n\nYou can now login.",
+                f"🎉 Account created successfully!\n\nWelcome, {first_name}!",
             )
-            self.show_login()
+
+            # Redirect based on role
+            if role == 'Admin':
+                from admin.manage_book import AdminDashboard
+                AdminDashboard(self.root, self)
+            else:
+                from user.book import UserBooksPage
+                UserBooksPage(self.root, self)
+
         signup_btn = tk.Button(
             form_frame,
             text="CREATE ACCOUNT",
@@ -457,39 +473,38 @@ class LibraryManagementSystem:
             command=handle_signup,
         )
 
-        # Ensure order: role -> (admin passkey right below if Admin) -> Create Account
-        def toggle_passkey(*args):
-            passkey_container.pack_forget()
-            signup_btn.pack_forget()
-
-            if role_var.get() == "Admin":
-                # Show passkey section
-                passkey_container.pack(fill="x", pady=(8, 20))
-                passkey_label.pack(anchor="w", pady=(0, 6))
-                passkey_frame_inner.pack(fill="x")
-                passkey_entry.pack(fill="x", padx=15, pady=12)
-            
-            # Always show signup button at the end
-            signup_btn.pack(pady=(10, 0))
-
-        # Trace the role variable BEFORE initial placement
-        role_var.trace("w", toggle_passkey)
-
-        # Initial placement
-        signup_btn.pack(pady=(10, 0))
-
-        # Hover effects
-        signup_btn.bind("<Enter>", lambda e: signup_btn.config(bg=accent_green_hover))
-        signup_btn.bind("<Leave>", lambda e: signup_btn.config(bg=accent_green))
-
         # Helper note
-        tk.Label(
+        helper_note = tk.Label(
             form_frame,
             text="By creating an account you agree to our Terms & Privacy.",
             font=("Helvetica", 10),
             bg=card_bg,
             fg=muted_fg,
-        ).pack(pady=(16, 0))
+        )
+
+        def toggle_passkey(*args):
+            passkey_container.pack_forget()
+            signup_btn.pack_forget()
+            helper_note.pack_forget()
+
+            if role_var.get() == "Admin":
+                passkey_container.pack(fill="x", pady=(8, 0))
+                passkey_label.pack(anchor="w", pady=(0, 6))
+                passkey_frame_inner.pack(fill="x")
+                passkey_entry.pack(fill="x", padx=15, pady=12)
+            
+            signup_btn.pack(pady=(20, 0))
+            helper_note.pack(pady=(16, 0))
+
+        role_var.trace("w", toggle_passkey)
+
+        # Initial placement
+        signup_btn.pack(pady=(20, 0))
+        helper_note.pack(pady=(16, 0))
+
+        # Hover effects
+        signup_btn.bind("<Enter>", lambda e: signup_btn.config(bg=accent_green_hover))
+        signup_btn.bind("<Leave>", lambda e: signup_btn.config(bg=accent_green))
 
     def show_login(self):
         self.clear_window()
