@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from PIL import Image, ImageTk
+from user.cart import UserCartPage
 import os
 
 class UserBooksPage:
@@ -253,13 +254,7 @@ class UserBooksPage:
     
     def show_cart(self):
         self.clear_content()
-        tk.Label(
-            self.content_frame,
-            text="🛒 Shopping Cart - Coming Soon",
-            font=("Helvetica", 24, "bold"),
-            fg=self.TEXT_FG,
-            bg=self.APP_BG
-        ).pack(expand=True)
+        UserCartPage(self.content_frame, self.main_app)
     
     def show_borrowed(self):
         self.clear_content()
@@ -475,11 +470,25 @@ class UserBooksPage:
             btn_height = 38
             btn_y = 360
 
+            # Check if book is in cart
+            user_email = self.current_user['email']
+            is_in_cart = self.db.is_in_cart(user_email, book['id'])
+            
+            # Modify button text and color based on cart status
+            if is_in_cart:
+                cart_btn_text = "✓ In Cart"
+                cart_btn_color = "#64748b"  # Gray color
+                cart_btn_hover = "#475569"
+            else:
+                cart_btn_text = "🛒 Add to Cart"
+                cart_btn_color = self.ACCENT_PURPLE
+                cart_btn_hover = "#5568d3"
+            
             self.create_rounded_button(
                 canvas, x=20, y=btn_y, width=btn_width, height=btn_height, radius=10,
-                text="🛒 Add to Cart", text_color="white", 
-                bg_color=self.ACCENT_PURPLE, hover_color="#5568d3",
-                command=lambda b=book: self.add_to_cart(b)
+                text=cart_btn_text, text_color="white", 
+                bg_color=cart_btn_color, hover_color=cart_btn_hover,
+                command=lambda b=book: self.add_to_cart(b) if not is_in_cart else None
             )
             
             self.create_rounded_button(
@@ -533,8 +542,21 @@ class UserBooksPage:
         self.display_books(search_query)
     
     def add_to_cart(self, book):
-        messagebox.showinfo("Add to Cart", f"'{book['name']}' added to cart!\n\n(Cart functionality coming soon)")
-    
+        user_email = self.current_user['email']
+        
+        # Check if already in cart
+        if self.db.is_in_cart(user_email, book['id']):
+            self.display_books()
+            return
+        
+        # Add to cart
+        success = self.db.add_to_cart(user_email, book['id'])
+        
+        if success:
+            messagebox.showinfo("Added to Cart", f"'{book['name']}' added to cart!")
+        else:
+            messagebox.showerror("Error", "Failed to add book to cart!")
+
     def borrow_book(self, book):
         result = messagebox.askyesno(
             "Borrow Book",

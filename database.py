@@ -12,6 +12,7 @@ class DatabaseManager:
         # Define file paths
         self.users_file = self.data_dir / "users.csv"
         self.books_file = self.data_dir / "books.csv"
+        self.cart_file = self.data_dir / "cart.csv"
         self.images_dir = Path("data/book_images")
         self.images_dir.mkdir(exist_ok=True)
         
@@ -33,6 +34,13 @@ class DatabaseManager:
                 'id', 'name', 'author', 'image_path'
             ])
             books_df.to_csv(self.books_file, index=False)
+
+        # Cart CSV
+        if not self.cart_file.exists():
+            cart_df = pd.DataFrame(columns=[
+                'user_email', 'book_id'
+            ])
+            cart_df.to_csv(self.cart_file, index=False)
     
     # ==================== USER OPERATIONS ====================
     
@@ -233,3 +241,72 @@ class DatabaseManager:
             'total': int(np.int64(len(df))),
             'with_images': int(np.sum(has_image))
         }
+    
+    def add_to_cart(self, user_email, book_id):
+        """Add book to user's cart"""
+        df = pd.read_csv(self.cart_file)
+        
+        # Check if already in cart
+        if self.is_in_cart(user_email, book_id):
+            return False  # Already exists
+        
+        new_item = pd.DataFrame([{
+            'user_email': user_email.lower(),
+            'book_id': book_id
+        }])
+        
+        df = pd.concat([df, new_item], ignore_index=True)
+        df.to_csv(self.cart_file, index=False)
+        return True
+
+    def remove_from_cart(self, user_email, book_id):
+        """Remove book from user's cart"""
+        df = pd.read_csv(self.cart_file)
+        
+        # Remove the item
+        df = df[~((df['user_email'] == user_email.lower()) & (df['book_id'] == book_id))]
+        df.to_csv(self.cart_file, index=False)
+        return True
+
+    def is_in_cart(self, user_email, book_id):
+        """Check if book is in user's cart"""
+        df = pd.read_csv(self.cart_file)
+        mask = (df['user_email'] == user_email.lower()) & (df['book_id'] == book_id)
+        return np.any(mask)
+
+    def get_user_cart(self, user_email):
+        """Get all cart items for a user with book details"""
+        cart_df = pd.read_csv(self.cart_file)
+        books_df = self.get_all_books()
+        
+        # Filter cart for this user
+        user_cart = cart_df[cart_df['user_email'] == user_email.lower()]
+        
+        if len(user_cart) == 0:
+            # Return empty DataFrame with correct columns matching books structure
+            return pd.DataFrame(columns=['id', 'name', 'author', 'image_path'])
+        
+        # Get book IDs from cart
+        book_ids = user_cart['book_id'].values
+        
+        # Filter books that are in cart
+        cart_books = books_df[books_df['id'].isin(book_ids)]
+        
+        # Handle case where books were deleted but still in cart
+        if len(cart_books) == 0:
+            return pd.DataFrame(columns=['id', 'name', 'author', 'image_path'])
+        
+        return cart_books
+    
+    def get_cart_count(self, user_email):
+        """Get number of items in user's cart using numpy"""
+        df = pd.read_csv(self.cart_file)
+        user_cart = df[df['user_email'] == user_email.lower()]
+        return int(np.int64(len(user_cart)))
+
+    def clear_cart(self, user_email):
+        """Clear all items from user's cart"""
+        df = pd.read_csv(self.cart_file)
+        df = df[df['user_email'] != user_email.lower()]
+        df.to_csv(self.cart_file, index=False)
+        return True
