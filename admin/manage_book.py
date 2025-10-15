@@ -116,7 +116,7 @@ class AdminDashboard:
         nav_frame.pack(side="left", expand=True, padx=60)
         
         nav_items = [
-            ("▦", "Library", self.show_book_management),
+            ("📙", "Library", self.show_book_management),
             ("◉", "Members", self.show_member_management),
             ("⇄", "Issue/Return", self.show_issue_return),
             ("▣", "Analytics", self.show_reports)

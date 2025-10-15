@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from PIL import Image, ImageTk
 from user.cart import UserCartPage
+from user.borrowing import UserBorrowingPage
 import os
 
 class UserBooksPage:
@@ -71,22 +72,24 @@ class UserBooksPage:
         title_container = tk.Frame(left_frame, bg=self.NAVBAR_BG)
         title_container.pack(side="left", pady=(5, 0))  
 
+        # Title container
         title_inner = tk.Frame(title_container, bg=self.NAVBAR_BG)
         title_inner.pack(side="left", anchor="center")
 
+        # Emoji logo — bigger and slightly raised
         tk.Label(
             title_inner,
             text="📚",
-            font=("Helvetica", 24),
+            font=("Helvetica", 32), 
             fg=self.ACCENT_GREEN,
             bg=self.NAVBAR_BG
-        ).pack(side="left", padx=(0, 8), pady=(0, 2)) 
+        ).pack(side="left", padx=(0, 10), pady=(0, 4))  
 
-        # Text
+        # LibraEase title — larger font
         tk.Label(
             title_inner,
             text="Libra",
-            font=("Helvetica", 18, "bold"),
+            font=("Helvetica", 24, "bold"),
             fg=self.ACCENT_PURPLE,
             bg=self.NAVBAR_BG
         ).pack(side="left")
@@ -94,7 +97,7 @@ class UserBooksPage:
         tk.Label(
             title_inner,
             text="Ease",
-            font=("Helvetica", 18, "bold"),
+            font=("Helvetica", 24, "bold"),
             fg=self.ACCENT_GREEN,
             bg=self.NAVBAR_BG
         ).pack(side="left")
@@ -104,7 +107,7 @@ class UserBooksPage:
         nav_frame.pack(side="left", expand=True, padx=60)
         
         nav_items = [
-            ("▦", "Books", self.show_books),
+            ("📙", "Books", self.show_books),
             ("🛒", "Cart", self.show_cart),
             ("📖", "Borrowed", self.show_borrowed)
         ]
@@ -258,13 +261,7 @@ class UserBooksPage:
     
     def show_borrowed(self):
         self.clear_content()
-        tk.Label(
-            self.content_frame,
-            text="📖 Borrowed Books - Coming Soon",
-            font=("Helvetica", 24, "bold"),
-            fg=self.TEXT_FG,
-            bg=self.APP_BG
-        ).pack(expand=True)
+        UserBorrowingPage(self.content_frame, self.main_app)
     
     def show_books(self):
         self.clear_content()
@@ -278,7 +275,7 @@ class UserBooksPage:
         
         tk.Label(
             title_container,
-            text=" Available Books",
+            text="📙 Available Books",
             font=("Helvetica", 28, "bold"),
             fg=self.ACCENT_PURPLE,
             bg=self.APP_BG
@@ -490,12 +487,25 @@ class UserBooksPage:
                 bg_color=cart_btn_color, hover_color=cart_btn_hover,
                 command=lambda b=book: self.add_to_cart(b) if not is_in_cart else None
             )
-            
+
+            is_borrowed = self.db.is_book_borrowed(book['id'])
+
+            if is_borrowed:
+                borrow_btn_text = "📕 Borrowed"
+                borrow_btn_color = "#64748b"
+                borrow_btn_hover = "#475569"
+                borrow_enabled = False
+            else:
+                borrow_btn_text = "📖 Borrow"
+                borrow_btn_color = self.ACCENT_GREEN
+                borrow_btn_hover = "#38d46a"
+                borrow_enabled = True
+
             self.create_rounded_button(
                 canvas, x=30 + btn_width, y=btn_y, width=btn_width, height=btn_height, radius=10,
-                text="📖 Borrow", text_color="white", 
-                bg_color=self.ACCENT_GREEN, hover_color="#38d46a",
-                command=lambda b=book: self.borrow_book(b)
+                text=borrow_btn_text, text_color="white", 
+                bg_color=borrow_btn_color, hover_color=borrow_btn_hover,
+                command=lambda b=book: self.borrow_book(b) if borrow_enabled else None
             )
 
         card_canvas.bind("<Configure>", redraw_card)
@@ -558,12 +568,54 @@ class UserBooksPage:
             messagebox.showerror("Error", "Failed to add book to cart!")
 
     def borrow_book(self, book):
+        user_email = self.current_user['email']
+        
+        # Check if user can borrow
+        if not self.db.can_borrow_book(user_email):
+            messagebox.showerror(
+                "Borrowing Limit Reached",
+                "You can only borrow maximum 2 books at a time!\n\n"
+                "Please return your current books before borrowing new ones."
+            )
+            return
+        
+        # Check if book is already borrowed
+        if self.db.is_book_borrowed(book['id']):
+            messagebox.showwarning(
+                "Book Already Borrowed",
+                f"'{book['name']}' is currently borrowed by another user.\n\n"
+                "Please check back later when it becomes available."
+            )
+            return
+        
+        # Confirm borrowing
         result = messagebox.askyesno(
             "Borrow Book",
-            f"Do you want to borrow '{book['name']}'?\n\n(Borrow functionality coming soon)"
+            f"Do you want to borrow '{book['name']}'?\n\n"
+            "Book Borrowing Terms:\n"
+            "• Collect from library within 3 days\n"
+            "• Return within 1.5 months (45 days)\n"
+            "• Late return fine: ₹2 per day\n\n"
+            "Do you accept these terms?"
         )
+        
         if result:
-            messagebox.showinfo("Success", f"You have borrowed '{book['name']}'!")
+            # Borrow the book
+            borrow_result = self.db.borrow_book(user_email, book['id'])
+            
+            if borrow_result['success']:
+                messagebox.showinfo(
+                    "Book Borrowed Successfully!",
+                    f"'{book['name']}' has been borrowed!\n\n"
+                    f"📍 Collect from library by: {borrow_result['collection_deadline']}\n"
+                    f"⏰ Return to library by: {borrow_result['return_deadline']}\n\n"
+                    "⚠️ Failure to return on time will result in a fine of ₹2 per day.\n\n"
+                    "Check 'Borrowed Books' section for details."
+                )
+                # Refresh the books display to update button states
+                self.display_books()
+            else:
+                messagebox.showerror("Error", borrow_result['message'])
     
     def logout(self):
         result = messagebox.askyesno("Logout", "Are you sure you want to logout?")

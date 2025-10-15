@@ -34,7 +34,7 @@ class UserCartPage:
         
         tk.Label(
             title_container,
-            text="My Cart",
+            text="🛒 My Cart",
             font=("Helvetica", 28, "bold"),
             fg=self.ACCENT_PURPLE,
             bg=self.APP_BG

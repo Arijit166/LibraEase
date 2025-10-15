@@ -8,6 +8,7 @@ class DatabaseManager:
         # Create data directory if not exists
         self.data_dir = Path("data")
         self.data_dir.mkdir(exist_ok=True)
+        self.borrowed_file = self.data_dir / "borrowed.csv"
         
         # Define file paths
         self.users_file = self.data_dir / "users.csv"
@@ -41,6 +42,14 @@ class DatabaseManager:
                 'user_email', 'book_id'
             ])
             cart_df.to_csv(self.cart_file, index=False)
+
+        # Borrowed Books CSV
+        if not self.borrowed_file.exists():
+            borrowed_df = pd.DataFrame(columns=[
+                'user_email', 'book_id', 'issue_date', 'collection_deadline', 
+                'return_deadline', 'status'
+            ])
+            borrowed_df.to_csv(self.borrowed_file, index=False)
     
     # ==================== USER OPERATIONS ====================
     
@@ -242,6 +251,8 @@ class DatabaseManager:
             'with_images': int(np.sum(has_image))
         }
     
+    # ==================== CART OPERATIONS ====================
+    
     def add_to_cart(self, user_email, book_id):
         """Add book to user's cart"""
         df = pd.read_csv(self.cart_file)
@@ -309,4 +320,120 @@ class DatabaseManager:
         df = pd.read_csv(self.cart_file)
         df = df[df['user_email'] != user_email.lower()]
         df.to_csv(self.cart_file, index=False)
+        return True
+    
+    # ==================== BORROWING OPERATIONS ====================
+    
+    def can_borrow_book(self, user_email):
+        """Check if user can borrow more books (max 2)"""
+        df = pd.read_csv(self.borrowed_file)
+        user_borrowed = df[(df['user_email'] == user_email.lower()) & 
+                        (df['status'] == 'borrowed')]
+        return len(user_borrowed) < 2
+
+    def is_book_borrowed(self, book_id):
+        """Check if book is already borrowed by someone"""
+        df = pd.read_csv(self.borrowed_file)
+        borrowed = df[(df['book_id'] == book_id) & (df['status'] == 'borrowed')]
+        return len(borrowed) > 0
+
+    def user_has_borrowed_book(self, user_email, book_id):
+        """Check if user has already borrowed this specific book"""
+        df = pd.read_csv(self.borrowed_file)
+        borrowed = df[(df['user_email'] == user_email.lower()) & 
+                    (df['book_id'] == book_id) & 
+                    (df['status'] == 'borrowed')]
+        return len(borrowed) > 0
+
+    def borrow_book(self, user_email, book_id):
+        """Borrow a book"""
+        from datetime import datetime, timedelta
+        
+        # Check if user can borrow
+        if not self.can_borrow_book(user_email):
+            return {'success': False, 'message': 'You can only borrow maximum 2 books at a time!'}
+        
+        # Check if book is already borrowed
+        if self.is_book_borrowed(book_id):
+            return {'success': False, 'message': 'This book is already borrowed by someone!'}
+        
+        # Check if user already has this book
+        if self.user_has_borrowed_book(user_email, book_id):
+            return {'success': False, 'message': 'You have already borrowed this book!'}
+        
+        df = pd.read_csv(self.borrowed_file)
+        
+        # Calculate dates
+        issue_date = datetime.now()
+        collection_deadline = issue_date + timedelta(days=3)
+        return_deadline = issue_date + timedelta(days=45)  # 1.5 months
+        
+        new_borrow = pd.DataFrame([{
+            'user_email': user_email.lower(),
+            'book_id': book_id,
+            'issue_date': issue_date.isoformat(),
+            'collection_deadline': collection_deadline.isoformat(),
+            'return_deadline': return_deadline.isoformat(),
+            'status': 'borrowed'
+        }])
+        
+        df = pd.concat([df, new_borrow], ignore_index=True)
+        df.to_csv(self.borrowed_file, index=False)
+        
+        # Remove from cart if exists
+        self.remove_from_cart(user_email, book_id)
+        
+        return {
+            'success': True, 
+            'collection_deadline': collection_deadline.strftime('%d %B %Y'),
+            'return_deadline': return_deadline.strftime('%d %B %Y')
+        }
+
+    def get_user_borrowed_books(self, user_email):
+        """Get all borrowed books for a user with book details"""
+        borrowed_df = pd.read_csv(self.borrowed_file)
+        books_df = self.get_all_books()
+        
+        # Filter borrowed books for this user
+        user_borrowed = borrowed_df[borrowed_df['user_email'] == user_email.lower()]
+        
+        if len(user_borrowed) == 0:
+            return pd.DataFrame(columns=['id', 'name', 'author', 'image_path', 
+                                        'issue_date', 'collection_deadline', 
+                                        'return_deadline', 'status'])
+        
+        # Merge with books data
+        merged = user_borrowed.merge(books_df, left_on='book_id', right_on='id', how='left')
+        
+        # Select and rename columns
+        result = merged[['id', 'name', 'author', 'image_path', 'issue_date', 
+                        'collection_deadline', 'return_deadline', 'status']]
+        
+        # Sort by issue date (most recent first)
+        result = result.sort_values('issue_date', ascending=False)
+        
+        return result
+
+    def get_borrowed_count(self, user_email):
+        """Get count of currently borrowed books"""
+        df = pd.read_csv(self.borrowed_file)
+        borrowed = df[(df['user_email'] == user_email.lower()) & 
+                    (df['status'] == 'borrowed')]
+        return int(np.int64(len(borrowed)))
+
+    def return_book(self, user_email, book_id):
+        """Mark a book as returned (for admin use)"""
+        df = pd.read_csv(self.borrowed_file)
+        
+        # Find the borrowed record
+        mask = ((df['user_email'] == user_email.lower()) & 
+                (df['book_id'] == book_id) & 
+                (df['status'] == 'borrowed'))
+        
+        if not np.any(mask):
+            return False
+        
+        # Update status to returned
+        df.loc[mask, 'status'] = 'returned'
+        df.to_csv(self.borrowed_file, index=False)
         return True
