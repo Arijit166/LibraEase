@@ -79,7 +79,7 @@ class UserBooksPage:
         # Emoji logo — bigger and slightly raised
         tk.Label(
             title_inner,
-            text="📚",
+            text="📙",
             font=("Helvetica", 32), 
             fg=self.ACCENT_GREEN,
             bg=self.NAVBAR_BG
@@ -107,7 +107,7 @@ class UserBooksPage:
         nav_frame.pack(side="left", expand=True, padx=60)
         
         nav_items = [
-            ("📙", "Books", self.show_books),
+            ("📚", "Books", self.show_books),
             ("🛒", "Cart", self.show_cart),
             ("📖", "Borrowed", self.show_borrowed)
         ]
@@ -275,7 +275,7 @@ class UserBooksPage:
         
         tk.Label(
             title_container,
-            text="📙 Available Books",
+            text="📚 Available Books",
             font=("Helvetica", 28, "bold"),
             fg=self.ACCENT_PURPLE,
             bg=self.APP_BG
@@ -461,11 +461,15 @@ class UserBooksPage:
             
             canvas.create_text(20, 280, text=title_text, anchor="nw", font=("Helvetica", 14, "bold"), fill=self.TEXT_FG)
             canvas.create_text(20, 305, text=author_text, anchor="nw", font=("Helvetica", 11), fill="#94a3b8")
+            book_count = int(float(book.get('count', 0)))
+            count_text = f"📊 Available: {book_count}"
+            count_color = self.ACCENT_GREEN if book_count > 0 else "#ef4444"
+            canvas.create_text(20, 330, text=count_text, anchor="nw", font=("Helvetica", 11, "bold"), fill=count_color)
 
             # --- Rounded Buttons ---
             btn_width = (width - 50) / 2
             btn_height = 38
-            btn_y = 360
+            btn_y = 380
 
             # Check if book is in cart
             user_email = self.current_user['email']
@@ -493,6 +497,11 @@ class UserBooksPage:
 
             if is_borrowed_by_current_user:
                 borrow_btn_text = "📖 Borrowed"
+                borrow_btn_color = "#64748b"
+                borrow_btn_hover = "#475569"
+                borrow_enabled = False
+            elif book_count <= 0:
+                borrow_btn_text = "❌ Not Available"
                 borrow_btn_color = "#64748b"
                 borrow_btn_hover = "#475569"
                 borrow_enabled = False

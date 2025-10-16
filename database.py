@@ -32,7 +32,7 @@ class DatabaseManager:
         # Books CSV
         if not self.books_file.exists():
             books_df = pd.DataFrame(columns=[
-                'id', 'name', 'author', 'image_path'
+                'id', 'name', 'author', 'image_path', 'count'
             ])
             books_df.to_csv(self.books_file, index=False)
 
@@ -133,11 +133,10 @@ class DatabaseManager:
         
         return df[mask]
     
-    def create_book(self, name, author, image_path=None):
+    def create_book(self, name, author, image_path=None, count=1):
         """Create new book"""
         df = pd.read_csv(self.books_file)
         
-        # Generate new ID using numpy
         if len(df) > 0:
             new_id = int(np.max(df['id'].values) + 1)
         else:
@@ -147,18 +146,18 @@ class DatabaseManager:
             'id': new_id,
             'name': name,
             'author': author,
-            'image_path': image_path if image_path else ''
+            'image_path': image_path if image_path else '',
+            'count': count  # Added
         }])
         
         df = pd.concat([df, new_book], ignore_index=True)
         df.to_csv(self.books_file, index=False)
         return new_id
     
-    def create_book_with_id(self, book_id, name, author, image_path=None):
+    def create_book_with_id(self, book_id, name, author, image_path=None, count=1):
         """Create new book with specific ID"""
         df = pd.read_csv(self.books_file)
         
-        # Check if ID already exists
         if book_id in df['id'].values:
             raise ValueError(f"Book ID {book_id} already exists")
         
@@ -166,32 +165,62 @@ class DatabaseManager:
             'id': book_id,
             'name': name,
             'author': author,
-            'image_path': image_path if image_path else ''
+            'image_path': image_path if image_path else '',
+            'count': count  
         }])
         
         df = pd.concat([df, new_book], ignore_index=True)
         df.to_csv(self.books_file, index=False)
         return book_id
     
-    def update_book(self, book_id, name=None, author=None, image_path=None):
+    def update_book(self, book_id, name=None, author=None, image_path=None, count=None):
         """Update book information"""
         df = pd.read_csv(self.books_file)
         
-        # Find book index
         idx = df[df['id'] == book_id].index
         if len(idx) == 0:
             return False
         
         idx = idx[0]
         
-        # Update fields
         if name is not None:
             df.at[idx, 'name'] = name
         if author is not None:
             df.at[idx, 'author'] = author
         if image_path is not None:
             df.at[idx, 'image_path'] = image_path
+        if count is not None:  # Added
+            df.at[idx, 'count'] = count
         
+        df.to_csv(self.books_file, index=False)
+        return True
+
+    # Add method to decrease count when borrowing:
+    def decrease_book_count(self, book_id):
+        """Decrease book count by 1"""
+        df = pd.read_csv(self.books_file)
+        idx = df[df['id'] == book_id].index
+        if len(idx) == 0:
+            return False
+        
+        idx = idx[0]
+        current_count = df.at[idx, 'count']
+        if current_count > 0:
+            df.at[idx, 'count'] = current_count - 1
+            df.to_csv(self.books_file, index=False)
+            return True
+        return False
+
+    # Add method to increase count when returning:
+    def increase_book_count(self, book_id):
+        """Increase book count by 1"""
+        df = pd.read_csv(self.books_file)
+        idx = df[df['id'] == book_id].index
+        if len(idx) == 0:
+            return False
+        
+        idx = idx[0]
+        df.at[idx, 'count'] = df.at[idx, 'count'] + 1
         df.to_csv(self.books_file, index=False)
         return True
     
@@ -355,17 +384,23 @@ class DatabaseManager:
         """Borrow a book"""
         from datetime import datetime, timedelta
         
-        # Check if user can borrow
         if not self.can_borrow_book(user_email):
             return {'success': False, 'message': 'You can only borrow maximum 2 books at a time!'}
         
-        # Check if user already has this book
         if self.user_has_borrowed_book(user_email, book_id):
             return {'success': False, 'message': 'You have already borrowed this book!'}
         
+        # Check if book is available
+        book = self.get_book_by_id(book_id)
+        if book is None or book.get('count', 0) <= 0:
+            return {'success': False, 'message': 'This book is currently not available!'}
+        
+        # Decrease book count
+        if not self.decrease_book_count(book_id):
+            return {'success': False, 'message': 'Failed to borrow book!'}
+        
         df = pd.read_csv(self.borrowed_file)
         
-        # Add missing columns if they don't exist
         if 'collected' not in df.columns:
             df['collected'] = False
         if 'collection_date' not in df.columns:
@@ -373,10 +408,9 @@ class DatabaseManager:
         if 'return_date' not in df.columns:
             df['return_date'] = ''
         
-        # Calculate dates
         issue_date = datetime.now()
         collection_deadline = issue_date + timedelta(days=3)
-        return_deadline = issue_date + timedelta(days=45)  # 1.5 months
+        return_deadline = issue_date + timedelta(days=45)
         
         new_borrow = pd.DataFrame([{
             'user_email': user_email.lower(),
@@ -393,7 +427,6 @@ class DatabaseManager:
         df = pd.concat([df, new_borrow], ignore_index=True)
         df.to_csv(self.borrowed_file, index=False)
         
-        # Remove from cart if exists
         self.remove_from_cart(user_email, book_id)
         
         return {
@@ -537,11 +570,9 @@ class DatabaseManager:
         
         df = pd.read_csv(self.borrowed_file)
         
-        # Add return_date column if not exists
         if 'return_date' not in df.columns:
             df['return_date'] = ''
         
-        # Find the borrowed record
         mask = ((df['user_email'] == user_email.lower()) & 
                 (df['book_id'] == book_id) & 
                 (df['status'] == 'borrowed'))
@@ -549,10 +580,13 @@ class DatabaseManager:
         if not np.any(mask):
             return False
         
-        # Update status to returned and add return date
         df.loc[mask, 'status'] = 'returned'
         df.loc[mask, 'return_date'] = datetime.now().isoformat()
         df.to_csv(self.borrowed_file, index=False)
+        
+        # Increase book count
+        self.increase_book_count(book_id)
+        
         return True
 
     def get_borrowed_stats(self):

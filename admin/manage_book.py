@@ -537,11 +537,14 @@ class AdminDashboard:
             
             canvas.create_text(20, 280, text=title_text, anchor="nw", font=("Helvetica", 14, "bold"), fill=self.TEXT_FG)
             canvas.create_text(20, 305, text=author_text, anchor="nw", font=("Helvetica", 11), fill="#94a3b8")
+            book_count = int(float(book.get('count', 0)))
+            count_text = f"📊 Available: {book_count}"
+            canvas.create_text(20, 330, text=count_text, anchor="nw", font=("Helvetica", 11, "bold"), fill=self.ACCENT_GREEN)
 
             # --- Rounded Buttons ---
             btn_width = (width - 50) / 2
             btn_height = 38
-            btn_y = 360
+            btn_y = 380
 
             self.create_rounded_button(
                 canvas, x=20, y=btn_y, width=btn_width, height=btn_height, radius=10,
@@ -653,6 +656,20 @@ class AdminDashboard:
         author_frame.pack(fill="x")
         author_entry = tk.Entry(author_frame, font=("Helvetica", 12), relief="flat", bd=0, bg=self.INPUT_BG, fg=self.TEXT_FG, insertbackground=self.TEXT_FG)
         author_entry.pack(fill="x", padx=15, pady=12)
+        # Book Count
+        tk.Label(
+            form_frame,
+            text="📊 Available Count",
+            font=("Helvetica", 12, "bold"),
+            fg=self.TEXT_FG,
+            bg=self.CARD_BG
+        ).pack(anchor="w", pady=(15, 5))
+
+        count_frame = tk.Frame(form_frame, bg=self.INPUT_BG, highlightthickness=1, highlightbackground="#475569")
+        count_frame.pack(fill="x")
+        count_entry = tk.Entry(count_frame, font=("Helvetica", 12), relief="flat", bd=0, bg=self.INPUT_BG, fg=self.TEXT_FG, insertbackground=self.TEXT_FG)
+        count_entry.insert(0, "1")  # Default count
+        count_entry.pack(fill="x", padx=15, pady=12)
         # Book ID 
         tk.Label(
             form_frame,
@@ -716,24 +733,25 @@ class AdminDashboard:
             name = name_entry.get().strip()
             author = author_entry.get().strip()
             book_id = id_entry.get().strip()
+            count_str = count_entry.get().strip()
             
-            if not name or not author or not book_id:
+            if not name or not author or not book_id or not count_str:
                 messagebox.showerror("Error", "Please fill in all fields!")
                 return
             
-            # Validate ID is numeric
             try:
                 book_id = int(book_id)
+                count = int(count_str)
+                if count < 0:
+                    raise ValueError
             except ValueError:
-                messagebox.showerror("Error", "Book ID must be a number!")
+                messagebox.showerror("Error", "Book ID and Count must be positive numbers!")
                 return
             
-            # Check if ID already exists
             if self.db.get_book_by_id(book_id) is not None:
                 messagebox.showerror("Error", f"Book ID {book_id} already exists! Please use a unique ID.")
                 return
             
-            # Save image if provided
             saved_image_path = None
             if image_path["path"]:
                 try:
@@ -744,13 +762,10 @@ class AdminDashboard:
                 except Exception as e:
                     messagebox.showwarning("Warning", f"Could not save image: {e}")
             
-            # Create book with specific ID
-            self.db.create_book_with_id(book_id, name, author, saved_image_path)
+            self.db.create_book_with_id(book_id, name, author, saved_image_path, count)
             
-            dialog.destroy()  # Close dialog first
-            self.show_book_management()  # Refresh the book grid
-            
-            # Show success message after refresh
+            dialog.destroy()
+            self.show_book_management()
             self.root.after(100, lambda: messagebox.showinfo("Success", "Book added successfully!"))
         
         add_book_btn = tk.Button(
@@ -823,6 +838,21 @@ class AdminDashboard:
         author_entry = tk.Entry(author_frame, font=("Helvetica", 12), relief="flat", bd=0, bg=self.INPUT_BG, fg=self.TEXT_FG, insertbackground=self.TEXT_FG)
         author_entry.insert(0, book['author'])
         author_entry.pack(fill="x", padx=15, pady=12)
+
+        # Book Count
+        tk.Label(
+            form_frame,
+            text="📊 Available Count",
+            font=("Helvetica", 12, "bold"),
+            fg=self.TEXT_FG,
+            bg=self.CARD_BG
+        ).pack(anchor="w", pady=(15, 5))
+
+        count_frame = tk.Frame(form_frame, bg=self.INPUT_BG, highlightthickness=1, highlightbackground="#475569")
+        count_frame.pack(fill="x")
+        count_entry = tk.Entry(count_frame, font=("Helvetica", 12), relief="flat", bd=0, bg=self.INPUT_BG, fg=self.TEXT_FG, insertbackground=self.TEXT_FG)
+        count_entry.insert(0, str(book.get('count', 1)))
+        count_entry.pack(fill="x", padx=15, pady=12)
         
         # Image
         tk.Label(
@@ -879,7 +909,7 @@ class AdminDashboard:
             relief="flat",
             cursor="hand2",
             activebackground="#5568d3",
-            command=lambda: self.update_book(book, name_entry, author_entry, image_path, dialog)
+            command=lambda: self.update_book(book, name_entry, author_entry, image_path, count_entry, dialog)
         )
         update_btn.pack(pady=30, ipadx=40, ipady=10)
         update_btn.bind("<Enter>", lambda e: update_btn.config(bg="#5568d3"))
@@ -914,15 +944,23 @@ class AdminDashboard:
                 f"✅ '{book_name}' has been deleted successfully!"
             ))
 
-    def update_book(self, book, name_entry, author_entry, image_path, dialog):
+    def update_book(self, book, name_entry, author_entry, image_path, count_entry, dialog):
         name = name_entry.get().strip()
         author = author_entry.get().strip()
+        count_str = count_entry.get().strip()
         
-        if not name or not author:
+        if not name or not author or not count_str:
             messagebox.showerror("Error", "Please fill in all fields!")
             return
         
-        # Handle image update
+        try:
+            count = int(count_str)
+            if count < 0:
+                raise ValueError
+        except ValueError:
+            messagebox.showerror("Error", "Count must be a positive number!")
+            return
+        
         saved_image_path = None
         if image_path["path"] != book.get('image_path'):
             if image_path["path"]:
@@ -935,12 +973,12 @@ class AdminDashboard:
                     messagebox.showwarning("Warning", f"Could not save image: {e}")
                     saved_image_path = book.get('image_path')
         
-        # Update book using database manager
         self.db.update_book(
             book['id'],
             name=name,
             author=author,
-            image_path=saved_image_path if saved_image_path else book.get('image_path')
+            image_path=saved_image_path if saved_image_path else book.get('image_path'),
+            count=count
         )
         
         dialog.destroy()
