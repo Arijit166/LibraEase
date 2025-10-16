@@ -886,6 +886,9 @@ class AdminDashboard:
         )
         
         if result:
+            # Store book name before deletion
+            book_name = book['name']
+            
             # Delete book and get image path
             image_path = self.db.delete_book(book['id'])
             
@@ -896,11 +899,14 @@ class AdminDashboard:
                 except:
                     pass
             
-            # Refresh the book display without showing messagebox first
+            # Refresh the book display first
             self.show_book_management()
             
-            # Show success message after refresh
-            self.root.after(100, lambda: messagebox.showinfo("Success", "Book deleted successfully!"))
+            # Show success message after refresh using main_app root
+            self.main_app.root.after(100, lambda: messagebox.showinfo(
+                "Success", 
+                f"✅ '{book_name}' has been deleted successfully!"
+            ))
 
     def update_book(self, book, name_entry, author_entry, image_path, dialog):
         name = name_entry.get().strip()
@@ -931,9 +937,9 @@ class AdminDashboard:
             image_path=saved_image_path if saved_image_path else book.get('image_path')
         )
         
-        messagebox.showinfo("Success", "Book updated successfully!")
         dialog.destroy()
         self.show_book_management()
+        messagebox.showinfo("Success", "Book updated successfully!")
     
     def logout(self):
         result = messagebox.askyesno("Logout", "Are you sure you want to logout?")

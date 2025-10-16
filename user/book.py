@@ -563,7 +563,7 @@ class UserBooksPage:
         success = self.db.add_to_cart(user_email, book['id'])
         
         if success:
-            messagebox.showinfo("Added to Cart", f"'{book['name']}' added to cart!")
+            pass
         else:
             messagebox.showerror("Error", "Failed to add book to cart!")
 

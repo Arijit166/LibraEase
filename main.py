@@ -446,10 +446,13 @@ class LibraryManagementSystem:
                 'role': role
             }
 
-            messagebox.showinfo(
-                "Success",
-                f"🎉 Account created successfully!\n\nWelcome, {first_name}!",
-            )
+            # Redirect based on role first
+            if role == 'Admin':
+                from admin.manage_book import AdminDashboard
+                AdminDashboard(self.root, self)
+            else:
+                from user.book import UserBooksPage
+                UserBooksPage(self.root, self)
 
             # Redirect based on role
             if role == 'Admin':
@@ -618,10 +621,13 @@ class LibraryManagementSystem:
             self.current_user = user_data
             display_name = self.current_user["first_name"] or email
             
-            messagebox.showinfo(
-                "Success",
-                f"🎉 Welcome back, {display_name}!\n\nRole: {self.current_user['role']}",
-            )
+            # Check role and redirect accordingly first
+            if self.current_user['role'] == 'Admin':
+                from admin.manage_book import AdminDashboard
+                AdminDashboard(self.root, self)
+            else:
+                from user.book import UserBooksPage
+                UserBooksPage(self.root, self)
 
             # Check role and redirect accordingly
             if self.current_user['role'] == 'Admin':

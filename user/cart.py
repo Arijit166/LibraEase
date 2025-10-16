@@ -247,12 +247,6 @@ class UserCartPage:
         canvas.tag_bind(button_tag, "<Leave>", on_leave)
     
     def remove_from_cart(self, book):
-        result = messagebox.askyesno(
-            "Remove from Cart",
-            f"Remove '{book['name']}' from your cart?"
-        )
-        if result:
-            user_email = self.current_user['email']
-            self.db.remove_from_cart(user_email, book['id'])
-            self.display_cart_items()
-            messagebox.showinfo("Success", f"'{book['name']}' removed from cart!")
+        user_email = self.current_user['email']
+        self.db.remove_from_cart(user_email, book['id'])
+        self.display_cart_items()
