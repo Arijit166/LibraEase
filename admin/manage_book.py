@@ -297,13 +297,8 @@ class AdminDashboard:
     
     def show_reports(self):
         self.clear_content()
-        tk.Label(
-            self.content_frame,
-            text="📊 Reports & Analysis - Coming Soon",
-            font=("Helvetica", 24, "bold"),
-            fg=self.TEXT_FG,
-            bg=self.APP_BG
-        ).pack(expand=True)
+        from admin.analysis import AdminAnalytics
+        AdminAnalytics(self.content_frame, self)
     
     def show_book_management(self):
         self.clear_content()

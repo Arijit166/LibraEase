@@ -381,7 +381,7 @@ class AdminMembers:
         # Borrowing records
         tk.Label(
             dialog,
-            text="📖 Borrowing Records",
+            text="📚 Borrowing Records",
             font=("Helvetica", 18, "bold"),
             fg=self.ACCENT_PURPLE,
             bg=self.APP_BG
