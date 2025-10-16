@@ -1,6 +1,6 @@
 # 📘 LibraEase
 
-LibraryEase is a Python-based Library Management System designed for small institutions and personal use. It offers a fully-featured GUI for managing books, members, borrow/return workflows, and analytics, with separate panels for admin and users.
+LibraEase is a Python-based Library Management System designed for small institutions and personal use. It offers a fully-featured GUI for managing books, members, borrow/return workflows, and analytics, with separate panels for admin and users.
 
 ## 🚀 Features
 ### Admin Panel
