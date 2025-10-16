@@ -488,10 +488,11 @@ class UserBooksPage:
                 command=lambda b=book: self.add_to_cart(b) if not is_in_cart else None
             )
 
-            is_borrowed = self.db.is_book_borrowed(book['id'])
+            user_email = self.current_user['email']
+            is_borrowed_by_current_user = self.db.is_book_borrowed_by_user(user_email, book['id'])
 
-            if is_borrowed:
-                borrow_btn_text = "📕 Borrowed"
+            if is_borrowed_by_current_user:
+                borrow_btn_text = "📖 Borrowed"
                 borrow_btn_color = "#64748b"
                 borrow_btn_hover = "#475569"
                 borrow_enabled = False
@@ -579,15 +580,6 @@ class UserBooksPage:
             )
             return
         
-        # Check if book is already borrowed
-        if self.db.is_book_borrowed(book['id']):
-            messagebox.showwarning(
-                "Book Already Borrowed",
-                f"'{book['name']}' is currently borrowed by another user.\n\n"
-                "Please check back later when it becomes available."
-            )
-            return
-        
         # Confirm borrowing
         result = messagebox.askyesno(
             "Borrow Book",
@@ -604,6 +596,7 @@ class UserBooksPage:
             borrow_result = self.db.borrow_book(user_email, book['id'])
             
             if borrow_result['success']:
+                self.display_books()
                 messagebox.showinfo(
                     "Book Borrowed Successfully!",
                     f"'{book['name']}' has been borrowed!\n\n"
@@ -612,8 +605,6 @@ class UserBooksPage:
                     "⚠️ Failure to return on time will result in a fine of ₹2 per day.\n\n"
                     "Check 'Borrowed Books' section for details."
                 )
-                # Refresh the books display to update button states
-                self.display_books()
             else:
                 messagebox.showerror("Error", borrow_result['message'])
     

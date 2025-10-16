@@ -119,14 +119,18 @@ class DatabaseManager:
         return None
     
     def search_books(self, query):
-        """Search books by name or author"""
+        """Search books by name, author or ID"""
         df = self.get_all_books()
         if len(df) == 0:
             return df
         
-        query = query.lower()
+        query = str(query).lower()
+        
+        # Search by name, author, or ID (as string)
         mask = (df['name'].str.lower().str.contains(query, na=False) | 
-                df['author'].str.lower().str.contains(query, na=False))
+                df['author'].str.lower().str.contains(query, na=False) |
+                df['id'].astype(str).str.contains(query, na=False))
+        
         return df[mask]
     
     def create_book(self, name, author, image_path=None):
@@ -330,11 +334,13 @@ class DatabaseManager:
         user_borrowed = df[(df['user_email'] == user_email.lower()) & 
                         (df['status'] == 'borrowed')]
         return len(user_borrowed) < 2
-
-    def is_book_borrowed(self, book_id):
-        """Check if book is already borrowed by someone"""
+    
+    def is_book_borrowed_by_user(self, user_email, book_id):
+        """Check if a specific user has borrowed a specific book and it's still active"""
         df = pd.read_csv(self.borrowed_file)
-        borrowed = df[(df['book_id'] == book_id) & (df['status'] == 'borrowed')]
+        borrowed = df[(df['user_email'] == user_email.lower()) & 
+                    (df['book_id'] == book_id) & 
+                    (df['status'] == 'borrowed')]
         return len(borrowed) > 0
 
     def user_has_borrowed_book(self, user_email, book_id):
@@ -352,10 +358,6 @@ class DatabaseManager:
         # Check if user can borrow
         if not self.can_borrow_book(user_email):
             return {'success': False, 'message': 'You can only borrow maximum 2 books at a time!'}
-        
-        # Check if book is already borrowed
-        if self.is_book_borrowed(book_id):
-            return {'success': False, 'message': 'This book is already borrowed by someone!'}
         
         # Check if user already has this book
         if self.user_has_borrowed_book(user_email, book_id):

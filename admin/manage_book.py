@@ -287,13 +287,8 @@ class AdminDashboard:
     
     def show_member_management(self):
         self.clear_content()
-        tk.Label(
-            self.content_frame,
-            text="👥 Member Management - Coming Soon",
-            font=("Helvetica", 24, "bold"),
-            fg=self.TEXT_FG,
-            bg=self.APP_BG
-        ).pack(expand=True)
+        from admin.members import AdminMembers
+        AdminMembers(self.content_frame, self)  
     
     def show_issue_return(self):
         self.clear_content()
@@ -361,7 +356,7 @@ class AdminDashboard:
         search_entry_frame.pack(side="left", fill="x", expand=True)
         
         self.search_var = tk.StringVar()
-        self.search_var.trace("w", lambda *args: self.filter_books())
+        self.search_var.trace_add("write", lambda *args: self.filter_books())
 
         search_entry = tk.Entry(
             search_entry_frame,
@@ -370,20 +365,23 @@ class AdminDashboard:
             relief="flat",
             bd=0,
             bg=self.INPUT_BG,
-            fg="#64748b",  # lighter color for placeholder
+            fg=self.TEXT_FG, # Set text color to default
             insertbackground=self.TEXT_FG
         )
-        search_entry.insert(0, "Search by name or author...")
+        
+        # Placeholder setup
+        placeholder = "Search by name, author or ID..."
+        search_entry.insert(0, placeholder)
+        search_entry.config(fg="#64748b")
 
-        # Remove placeholder on focus
         def on_focus_in(event):
-            if search_entry.get() == "Search by name or author...":
+            if search_entry.get() == placeholder:
                 search_entry.delete(0, tk.END)
                 search_entry.config(fg=self.TEXT_FG)
 
         def on_focus_out(event):
             if not search_entry.get():
-                search_entry.insert(0, "Search by name or author...")
+                search_entry.insert(0, placeholder)
                 search_entry.config(fg="#64748b")
 
         search_entry.bind("<FocusIn>", on_focus_in)
@@ -437,7 +435,15 @@ class AdminDashboard:
         # Enable mousewheel scrolling
         def _on_mousewheel(event):
             canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+        def _bind_mousewheel(event):
+            canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+        def _unbind_mousewheel(event):
+            canvas.unbind_all("<MouseWheel>")
+
+        canvas.bind("<Enter>", _bind_mousewheel)
+        canvas.bind("<Leave>", _unbind_mousewheel)
         
         # Load and display books
         self.display_books()
@@ -447,6 +453,10 @@ class AdminDashboard:
         for widget in self.books_container.winfo_children():
             widget.destroy()
         
+        # If search query is the placeholder, treat it as empty
+        if search_query == "Search by name, author or ID...":
+            search_query = ""
+            
         # Load books using database manager
         if search_query:
             books_df = self.db.search_books(search_query)
@@ -587,10 +597,11 @@ class AdminDashboard:
             canvas.itemconfig(button_shape, fill=bg_color)
             
         canvas.tag_bind(button_tag, "<Enter>", on_enter)
-        canvas.tag_bind(button_tag, "<Leave>", on_leave)    
+        canvas.tag_bind(button_tag, "<Leave>", on_leave)   
+
     def filter_books(self):
         search_query = self.search_var.get()
-        if search_query == "Search by name or author...":
+        if search_query == "Search by name, author or ID...":
             search_query = ""
         self.display_books(search_query)
     
