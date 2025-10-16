@@ -3,6 +3,7 @@ from tkinter import messagebox
 from tkinter import ttk
 from PIL import Image, ImageTk
 from datetime import datetime, timedelta
+import pandas as pd
 import os
 
 class UserBorrowingPage:
@@ -194,21 +195,32 @@ class UserBorrowingPage:
             padx=12,
             pady=4
         ).pack()
-        
+
         # Dates information
         info_frame = tk.Frame(right_frame, bg=self.CARD_BG)
         info_frame.pack(fill="x")
-        
+
         if status == 'returned':
-            # Show returned message
             tk.Label(
                 info_frame,
-                text="This book has been returned to the library.",
+                text="✅ This book has been returned to the library.",
                 font=("Helvetica", 11),
                 fg=self.ACCENT_GREEN,
                 bg=self.CARD_BG,
                 anchor="w"
             ).pack(fill="x")
+            
+            # Show return date if available
+            if pd.notna(book_data.get('return_date')) and book_data.get('return_date'):
+                return_date = datetime.fromisoformat(book_data['return_date'])
+                tk.Label(
+                    info_frame,
+                    text=f"📅 Returned on: {return_date.strftime('%d %B %Y, %I:%M %p')}",
+                    font=("Helvetica", 10),
+                    fg="#94a3b8",
+                    bg=self.CARD_BG,
+                    anchor="w"
+                ).pack(fill="x", pady=(5, 0))
         else:
             # Issue date
             issue_date = datetime.fromisoformat(book_data['issue_date'])
@@ -221,16 +233,42 @@ class UserBorrowingPage:
                 anchor="w"
             ).pack(fill="x", pady=2)
             
-            # Collection deadline
-            collection_deadline = datetime.fromisoformat(book_data['collection_deadline'])
-            tk.Label(
-                info_frame,
-                text=f"📍 Collect by: {collection_deadline.strftime('%d %B %Y')}",
-                font=("Helvetica", 11),
-                fg="#fbbf24",
-                bg=self.CARD_BG,
-                anchor="w"
-            ).pack(fill="x", pady=2)
+            # Check if collected
+            is_collected = book_data.get('collected', False)
+            
+            if is_collected:
+                # Show collected status
+                collection_date = book_data.get('collection_date')
+                if pd.notna(collection_date) and collection_date:
+                    col_date = datetime.fromisoformat(collection_date)
+                    tk.Label(
+                        info_frame,
+                        text=f"✅ Collected on: {col_date.strftime('%d %B %Y, %I:%M %p')}",
+                        font=("Helvetica", 11),
+                        fg=self.ACCENT_GREEN,
+                        bg=self.CARD_BG,
+                        anchor="w"
+                    ).pack(fill="x", pady=2)
+                else:
+                    tk.Label(
+                        info_frame,
+                        text="✅ Collected from library",
+                        font=("Helvetica", 11),
+                        fg=self.ACCENT_GREEN,
+                        bg=self.CARD_BG,
+                        anchor="w"
+                    ).pack(fill="x", pady=2)
+            else:
+                # Collection deadline
+                collection_deadline = datetime.fromisoformat(book_data['collection_deadline'])
+                tk.Label(
+                    info_frame,
+                    text=f"📍 Collect by: {collection_deadline.strftime('%d %B %Y')}",
+                    font=("Helvetica", 11),
+                    fg="#fbbf24",
+                    bg=self.CARD_BG,
+                    anchor="w"
+                ).pack(fill="x", pady=2)
             
             # Return deadline
             return_deadline = datetime.fromisoformat(book_data['return_deadline'])
@@ -247,12 +285,13 @@ class UserBorrowingPage:
                 anchor="w"
             ).pack(fill="x", pady=2)
             
-            # Fine warning
-            tk.Label(
-                info_frame,
-                text="⚠️ Late return fine: ₹2 per day after deadline",
-                font=("Helvetica", 10, "italic"),
-                fg="#f59e0b",
-                bg=self.CARD_BG,
-                anchor="w"
-            ).pack(fill="x", pady=(8, 0))
+            # Fine warning (only if collected)
+            if is_collected:
+                tk.Label(
+                    info_frame,
+                    text="⚠️ Late return fine: ₹2 per day after deadline",
+                    font=("Helvetica", 10, "italic"),
+                    fg="#f59e0b",
+                    bg=self.CARD_BG,
+                    anchor="w"
+                ).pack(fill="x", pady=(8, 0))

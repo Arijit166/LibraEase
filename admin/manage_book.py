@@ -297,13 +297,8 @@ class AdminDashboard:
     
     def show_issue_return(self):
         self.clear_content()
-        tk.Label(
-            self.content_frame,
-            text="🔄 Issue/Return Management - Coming Soon",
-            font=("Helvetica", 24, "bold"),
-            fg=self.TEXT_FG,
-            bg=self.APP_BG
-        ).pack(expand=True)
+        from admin.admin_issue_return import AdminIssueReturn
+        AdminIssueReturn(self.content_frame, self)
     
     def show_reports(self):
         self.clear_content()
@@ -328,7 +323,7 @@ class AdminDashboard:
         
         tk.Label(
             title_container,
-            text=" Book Management",
+            text="📙 Book Management",
             font=("Helvetica", 28, "bold"),
             fg=self.ACCENT_PURPLE,
             bg=self.APP_BG

@@ -47,7 +47,7 @@ class DatabaseManager:
         if not self.borrowed_file.exists():
             borrowed_df = pd.DataFrame(columns=[
                 'user_email', 'book_id', 'issue_date', 'collection_deadline', 
-                'return_deadline', 'status'
+                'return_deadline', 'status', 'collected', 'collection_date', 'return_date'
             ])
             borrowed_df.to_csv(self.borrowed_file, index=False)
     
@@ -363,6 +363,14 @@ class DatabaseManager:
         
         df = pd.read_csv(self.borrowed_file)
         
+        # Add missing columns if they don't exist
+        if 'collected' not in df.columns:
+            df['collected'] = False
+        if 'collection_date' not in df.columns:
+            df['collection_date'] = ''
+        if 'return_date' not in df.columns:
+            df['return_date'] = ''
+        
         # Calculate dates
         issue_date = datetime.now()
         collection_deadline = issue_date + timedelta(days=3)
@@ -374,7 +382,10 @@ class DatabaseManager:
             'issue_date': issue_date.isoformat(),
             'collection_deadline': collection_deadline.isoformat(),
             'return_deadline': return_deadline.isoformat(),
-            'status': 'borrowed'
+            'status': 'borrowed',
+            'collected': False,
+            'collection_date': '',
+            'return_date': ''
         }])
         
         df = pd.concat([df, new_borrow], ignore_index=True)
@@ -394,20 +405,30 @@ class DatabaseManager:
         borrowed_df = pd.read_csv(self.borrowed_file)
         books_df = self.get_all_books()
         
+        # Add missing columns if they don't exist
+        if 'collected' not in borrowed_df.columns:
+            borrowed_df['collected'] = False
+        if 'collection_date' not in borrowed_df.columns:
+            borrowed_df['collection_date'] = ''
+        if 'return_date' not in borrowed_df.columns:
+            borrowed_df['return_date'] = ''
+        
         # Filter borrowed books for this user
         user_borrowed = borrowed_df[borrowed_df['user_email'] == user_email.lower()]
         
         if len(user_borrowed) == 0:
             return pd.DataFrame(columns=['id', 'name', 'author', 'image_path', 
                                         'issue_date', 'collection_deadline', 
-                                        'return_deadline', 'status'])
+                                        'return_deadline', 'status', 'collected',
+                                        'collection_date', 'return_date'])
         
         # Merge with books data
         merged = user_borrowed.merge(books_df, left_on='book_id', right_on='id', how='left')
         
-        # Select and rename columns
+        # Select and rename columns - include all new columns
         result = merged[['id', 'name', 'author', 'image_path', 'issue_date', 
-                        'collection_deadline', 'return_deadline', 'status']]
+                        'collection_deadline', 'return_deadline', 'status', 
+                        'collected', 'collection_date', 'return_date']]
         
         # Sort by issue date (most recent first)
         result = result.sort_values('issue_date', ascending=False)
@@ -437,3 +458,124 @@ class DatabaseManager:
         df.loc[mask, 'status'] = 'returned'
         df.to_csv(self.borrowed_file, index=False)
         return True
+    
+    # ==================== ADMIN BORROWING OPERATIONS ====================
+
+    def get_all_borrowed_books(self):
+        """Get all borrowed books with user and book details for admin"""
+        borrowed_df = pd.read_csv(self.borrowed_file)
+        books_df = self.get_all_books()
+        users_df = self.get_all_users()
+        
+        if len(borrowed_df) == 0:
+            return pd.DataFrame(columns=['user_email', 'user_name', 'book_id', 'name', 
+                                        'author', 'image_path', 'issue_date', 
+                                        'collection_deadline', 'return_deadline', 
+                                        'status', 'collected'])
+        
+        # Add collected column if not exists
+        if 'collected' not in borrowed_df.columns:
+            borrowed_df['collected'] = False
+        
+        # Merge with books data
+        merged = borrowed_df.merge(books_df, left_on='book_id', right_on='id', how='left')
+        
+        # Merge with users data to get names
+        merged = merged.merge(
+            users_df[['email', 'first_name', 'last_name']], 
+            left_on='user_email', 
+            right_on='email', 
+            how='left'
+        )
+        
+        # Create full name
+        merged['user_name'] = merged['first_name'] + ' ' + merged['last_name']
+        
+        # Select required columns
+        result = merged[['user_email', 'user_name', 'book_id', 'name', 'author', 
+                        'image_path', 'issue_date', 'collection_deadline', 
+                        'return_deadline', 'status', 'collected']]
+        
+        # Sort by issue date (most recent first)
+        result = result.sort_values('issue_date', ascending=False)
+        
+        return result
+
+    def mark_book_collected(self, user_email, book_id):
+        """Mark a borrowed book as collected by user"""
+        from datetime import datetime
+        
+        df = pd.read_csv(self.borrowed_file)
+        
+        # Add collected column if not exists
+        if 'collected' not in df.columns:
+            df['collected'] = False
+        
+        # Add collection_date column if not exists
+        if 'collection_date' not in df.columns:
+            df['collection_date'] = ''
+        
+        # Find the borrowed record
+        mask = ((df['user_email'] == user_email.lower()) & 
+                (df['book_id'] == book_id) & 
+                (df['status'] == 'borrowed'))
+        
+        if not np.any(mask):
+            return False
+        
+        # Update collected status and date
+        df.loc[mask, 'collected'] = True
+        df.loc[mask, 'collection_date'] = datetime.now().isoformat()
+        df.to_csv(self.borrowed_file, index=False)
+        return True
+
+    def mark_book_returned(self, user_email, book_id):
+        """Mark a borrowed book as returned"""
+        from datetime import datetime
+        
+        df = pd.read_csv(self.borrowed_file)
+        
+        # Add return_date column if not exists
+        if 'return_date' not in df.columns:
+            df['return_date'] = ''
+        
+        # Find the borrowed record
+        mask = ((df['user_email'] == user_email.lower()) & 
+                (df['book_id'] == book_id) & 
+                (df['status'] == 'borrowed'))
+        
+        if not np.any(mask):
+            return False
+        
+        # Update status to returned and add return date
+        df.loc[mask, 'status'] = 'returned'
+        df.loc[mask, 'return_date'] = datetime.now().isoformat()
+        df.to_csv(self.borrowed_file, index=False)
+        return True
+
+    def get_borrowed_stats(self):
+        """Get borrowing statistics for admin"""
+        df = pd.read_csv(self.borrowed_file)
+        
+        if len(df) == 0:
+            return {
+                'total_borrowed': 0,
+                'active_borrowed': 0,
+                'pending_collection': 0,
+                'collected': 0,
+                'returned': 0
+            }
+        
+        # Add collected column if not exists
+        if 'collected' not in df.columns:
+            df['collected'] = False
+        
+        active = df[df['status'] == 'borrowed']
+        
+        return {
+            'total_borrowed': int(np.int64(len(df))),
+            'active_borrowed': int(np.int64(len(active))),
+            'pending_collection': int(np.sum((active['collected'] == False).values)),
+            'collected': int(np.sum((active['collected'] == True).values)),
+            'returned': int(np.int64(len(df[df['status'] == 'returned'])))
+        }
