@@ -1,8 +1,6 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
-from PIL import Image, ImageTk
+from tkinter import ttk
 from datetime import datetime
-import os
 import pandas as pd
 
 class AdminMembers:

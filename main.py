@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
-from tkinter import messagebox
-import json
+from admin.styled_message_box import StyledMessageBox
 from database import DatabaseManager
 import os
 from dotenv import load_dotenv
@@ -411,29 +410,29 @@ class LibraryManagementSystem:
             role = role_var.get()
 
             if not first_name or not last_name or not email or not password:
-                messagebox.showerror("Error", "Please fill in all fields!")
+                StyledMessageBox.show_error(self.root, "Error", "Please fill in all fields!")
                 return
 
             if len(first_name) < 2 or len(last_name) < 2:
-                messagebox.showerror("Error", "Names must be at least 2 characters!")
+                StyledMessageBox.show_error(self.root, "Error", "Names must be at least 2 characters!")
                 return
 
             if "@" not in email or "." not in email:
-                messagebox.showerror("Error", "Please enter a valid email address!")
+                StyledMessageBox.show_error(self.root, "Error", "Please enter a valid email address!")
                 return
 
             if len(password) < 4:
-                messagebox.showerror("Error", "Password must be at least 4 characters!")
+                StyledMessageBox.show_error(self.root, "Error", "Password must be at least 4 characters!")
                 return
 
             if role == "Admin":
                 admin_key = passkey_entry.get().strip()
                 if admin_key != self.ADMIN_PASSKEY:
-                    messagebox.showerror("Error", "Invalid admin passkey!")
+                    StyledMessageBox.show_error(self.root, "Error", "Invalid admin passkey!")
                     return
 
             if self.db.user_exists(email):
-                messagebox.showerror("Error", "Email already exists! Please log in.")
+                StyledMessageBox.show_error(self.root, "Error", "Email already exists! Please log in.")
                 return
 
             self.db.create_user(email, first_name, last_name, password, role)
@@ -445,14 +444,6 @@ class LibraryManagementSystem:
                 'last_name': last_name,
                 'role': role
             }
-
-            # Redirect based on role first
-            if role == 'Admin':
-                from admin.manage_book import AdminDashboard
-                AdminDashboard(self.root, self)
-            else:
-                from user.book import UserBooksPage
-                UserBooksPage(self.root, self)
 
             # Redirect based on role
             if role == 'Admin':
@@ -608,27 +599,19 @@ class LibraryManagementSystem:
             password = password_entry.get().strip()
 
             if not email or not password:
-                messagebox.showerror("Error", "Please fill in all fields!")
+                StyledMessageBox.show_error(self.root, "Error", "Please fill in all fields!")
                 return
 
             # Use database manager
             user_data = self.db.validate_login(email, password)
             
             if user_data is None:
-                messagebox.showerror("Error", "Invalid email or password!")
+                StyledMessageBox.show_error(self.root, "Error", "Invalid email or password!")
                 return
 
             self.current_user = user_data
             display_name = self.current_user["first_name"] or email
             
-            # Check role and redirect accordingly first
-            if self.current_user['role'] == 'Admin':
-                from admin.manage_book import AdminDashboard
-                AdminDashboard(self.root, self)
-            else:
-                from user.book import UserBooksPage
-                UserBooksPage(self.root, self)
-
             # Check role and redirect accordingly
             if self.current_user['role'] == 'Admin':
                 from admin.manage_book import AdminDashboard
@@ -637,7 +620,6 @@ class LibraryManagementSystem:
                 from user.book import UserBooksPage
                 UserBooksPage(self.root, self)
     
-
         login_btn = tk.Button(
             form_frame,
             text="LOGIN",

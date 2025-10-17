@@ -1,8 +1,9 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
 from PIL import Image, ImageTk
 from user.cart import UserCartPage
 from user.borrowing import UserBorrowingPage
+from user.styled_message_box import StyledMessageBox
 import os
 
 class UserBooksPage:
@@ -89,7 +90,7 @@ class UserBooksPage:
         tk.Label(
             title_inner,
             text="Libra",
-            font=("Helvetica", 24, "bold"),
+            font=("Helvetica", 28, "bold"),
             fg=self.ACCENT_PURPLE,
             bg=self.NAVBAR_BG
         ).pack(side="left")
@@ -97,7 +98,7 @@ class UserBooksPage:
         tk.Label(
             title_inner,
             text="Ease",
-            font=("Helvetica", 24, "bold"),
+            font=("Helvetica", 28, "bold"),
             fg=self.ACCENT_GREEN,
             bg=self.NAVBAR_BG
         ).pack(side="left")
@@ -144,7 +145,7 @@ class UserBooksPage:
             text_label = tk.Label(
                 btn_inner,
                 text=text,
-                font=("Segoe UI", 9, "bold"),
+                font=("Segoe UI", 15, "bold"),
                 bg=self.NAVBAR_BG,
                 fg="#64748b"
             )
@@ -190,7 +191,7 @@ class UserBooksPage:
         tk.Label(
             user_container,
             text="●",
-            font=("Helvetica", 10),
+            font=("Helvetica", 15),
             fg=self.ACCENT_GREEN,
             bg="#253145"
         ).pack(side="left", padx=(12, 5))
@@ -198,7 +199,7 @@ class UserBooksPage:
         tk.Label(
             user_container,
             text=user_name,
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 15, "bold"),
             fg=self.TEXT_FG,
             bg="#253145"
         ).pack(side="left", padx=(0, 12), pady=8)
@@ -209,7 +210,7 @@ class UserBooksPage:
         logout_btn = tk.Button(
             logout_container,
             text="⏻  Logout",
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 15, "bold"),
             bg="#ef4444",
             fg="white",
             relief="flat",
@@ -575,22 +576,52 @@ class UserBooksPage:
         if success:
             pass
         else:
-            messagebox.showerror("Error", "Failed to add book to cart!")
+            StyledMessageBox.show_error(self.root, "Error", "Failed to add book to cart!")
 
     def borrow_book(self, book):
-        user_email = self.current_user['email']
-        
+        user_email = self.current_user['email']    
         # Check if user can borrow
         if not self.db.can_borrow_book(user_email):
-            messagebox.showerror(
-                "Borrowing Limit Reached",
-                "You can only borrow maximum 2 books at a time!\n\n"
-                "Please return your current books before borrowing new ones."
-            )
+            # Custom error dialog with increased height
+            dialog = tk.Toplevel(self.root)
+            dialog.title("Borrowing Limit Reached")
+            dialog.geometry("450x350")
+            dialog.configure(bg="#1e293b")
+            dialog.transient(self.root)
+            dialog.grab_set()
+            dialog.resizable(False, False)
+            
+            # Center dialog
+            dialog.update_idletasks()
+            x = (dialog.winfo_screenwidth() // 2) - (450 // 2)
+            y = (dialog.winfo_screenheight() // 2) - (350 // 2)
+            dialog.geometry(f"450x350+{x}+{y}")
+            
+            # Error icon and title
+            header_frame = tk.Frame(dialog, bg="#1e293b")
+            header_frame.pack(pady=30)
+            
+            tk.Label(header_frame, text="⚠️", font=("Helvetica", 48), bg="#1e293b", fg="#ef4444").pack()
+            tk.Label(header_frame, text="Borrowing Limit Reached", font=("Helvetica", 18, "bold"), fg="#ef4444", bg="#1e293b").pack(pady=(10, 0))
+            
+            # Message
+            msg_frame = tk.Frame(dialog, bg="#1e293b")
+            msg_frame.pack(pady=10, padx=40)
+            
+            tk.Label(msg_frame, text="You can only borrow maximum 2 books at a time!\n\nPlease return your current books before borrowing new ones.", font=("Helvetica", 12), fg="#e5e7eb", bg="#1e293b", wraplength=370, justify="center").pack()
+            
+            # OK Button
+            ok_btn = tk.Button(dialog, text="OK", font=("Helvetica", 12, "bold"), bg="#ef4444", fg="white", relief="flat", cursor="hand2", padx=40, pady=10, command=dialog.destroy)
+            ok_btn.pack(pady=20)
+            ok_btn.bind("<Enter>", lambda e: ok_btn.config(bg="#dc2626"))
+            ok_btn.bind("<Leave>", lambda e: ok_btn.config(bg="#ef4444"))
+            
+            dialog.wait_window()
             return
         
         # Confirm borrowing
-        result = messagebox.askyesno(
+        result = StyledMessageBox.ask_yes_no(
+            self.root,
             "Borrow Book",
             f"Do you want to borrow '{book['name']}'?\n\n"
             "Book Borrowing Terms:\n"
@@ -606,7 +637,8 @@ class UserBooksPage:
             
             if borrow_result['success']:
                 self.display_books()
-                messagebox.showinfo(
+                StyledMessageBox.show_success(
+                    self.root,
                     "Book Borrowed Successfully!",
                     f"'{book['name']}' has been borrowed!\n\n"
                     f"📍 Collect from library by: {borrow_result['collection_deadline']}\n"
@@ -615,10 +647,10 @@ class UserBooksPage:
                     "Check 'Borrowed Books' section for details."
                 )
             else:
-                messagebox.showerror("Error", borrow_result['message'])
+                StyledMessageBox.show_error(self.root, "Error", borrow_result['message'])
     
     def logout(self):
-        result = messagebox.askyesno("Logout", "Are you sure you want to logout?")
+        result = StyledMessageBox.ask_yes_no(self.root, "Logout", "Are you sure you want to logout?")
         if result:
             self.main_app.current_user = None
             self.main_app.show_welcome_screen()

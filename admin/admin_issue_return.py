@@ -1,7 +1,8 @@
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import ttk
 from PIL import Image, ImageTk
 from datetime import datetime
+from admin.styled_message_box import StyledMessageBox
 import os
 import pandas as pd
 
@@ -408,7 +409,8 @@ class AdminIssueReturn:
                 return_btn.bind("<Leave>", lambda e: return_btn.config(bg=self.ACCENT_PURPLE))
     
     def mark_collected(self, book_data):
-        result = messagebox.askyesno(
+        result = StyledMessageBox.ask_yes_no(
+            self.parent,
             "Confirm Collection",
             f"Mark '{book_data['name']}' as collected by {book_data['user_name']}?"
         )
@@ -423,15 +425,17 @@ class AdminIssueReturn:
                 # Refresh the page first
                 self.show_issue_return_page()
                 # Show success message after refresh
-                self.admin_dashboard.root.after(100, lambda: messagebox.showinfo(
+                self.admin_dashboard.root.after(100, lambda: StyledMessageBox.show_success(
+                    self.parent,
                     "Success", 
                     f"✅ '{book_data['name']}' marked as collected!\n\nUser: {book_data['user_name']}"
                 ))
             else:
-                messagebox.showerror("Error", "Failed to update collection status!")
+                StyledMessageBox.show_error(self.parent, "Error", "Failed to update collection status!")
     
     def mark_returned(self, book_data):
-        result = messagebox.askyesno(
+        result = StyledMessageBox.ask_yes_no(
+            self.parent,
             "Confirm Return",
             f"Mark '{book_data['name']}' as returned by {book_data['user_name']}?"
         )
@@ -446,9 +450,10 @@ class AdminIssueReturn:
                 # Refresh the page first
                 self.show_issue_return_page()
                 # Show success message after refresh
-                self.admin_dashboard.root.after(100, lambda: messagebox.showinfo(
+                self.admin_dashboard.root.after(100, lambda: StyledMessageBox.show_success(
+                    self.parent,
                     "Success", 
                     f"✅ '{book_data['name']}' has been returned!\n\nUser: {book_data['user_name']}\n\nThe book is now available in the library."
                 ))
             else:
-                messagebox.showerror("Error", "Failed to update return status!")
+                StyledMessageBox.show_error(self.parent, "Error", "Failed to update return status!")

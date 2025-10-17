@@ -18,7 +18,7 @@ class StyledMessageBox:
         """Show error message dialog"""
         dialog = tk.Toplevel(parent)
         dialog.title(title)
-        dialog.geometry("450x300")
+        dialog.geometry("450x250")
         dialog.configure(bg=StyledMessageBox.CARD_BG)
         dialog.transient(parent)
         dialog.grab_set()
@@ -27,8 +27,8 @@ class StyledMessageBox:
         # Center dialog
         dialog.update_idletasks()
         x = (dialog.winfo_screenwidth() // 2) - (450 // 2)
-        y = (dialog.winfo_screenheight() // 2) - (300 // 2)
-        dialog.geometry(f"450x300+{x}+{y}")
+        y = (dialog.winfo_screenheight() // 2) - (250 // 2)
+        dialog.geometry(f"450x250+{x}+{y}")
         
         # Error icon and title
         header_frame = tk.Frame(dialog, bg=StyledMessageBox.CARD_BG)
@@ -92,7 +92,7 @@ class StyledMessageBox:
         """Show success message dialog"""
         dialog = tk.Toplevel(parent)
         dialog.title(title)
-        dialog.geometry("450x400")
+        dialog.geometry("450x450")
         dialog.configure(bg=StyledMessageBox.CARD_BG)
         dialog.transient(parent)
         dialog.grab_set()
@@ -101,8 +101,8 @@ class StyledMessageBox:
         # Center dialog
         dialog.update_idletasks()
         x = (dialog.winfo_screenwidth() // 2) - (450 // 2)
-        y = (dialog.winfo_screenheight() // 2) - (400 // 2)
-        dialog.geometry(f"450x400+{x}+{y}")
+        y = (dialog.winfo_screenheight() // 2) - (450 // 2)
+        dialog.geometry(f"450x450+{x}+{y}")
         
         # Success icon and title
         header_frame = tk.Frame(dialog, bg=StyledMessageBox.CARD_BG)
@@ -240,7 +240,7 @@ class StyledMessageBox:
         """Show yes/no confirmation dialog"""
         dialog = tk.Toplevel(parent)
         dialog.title(title)
-        dialog.geometry("450x350")  # Increased from 320 to 350
+        dialog.geometry("450x450")  # Increased from 320 to 350
         dialog.configure(bg=StyledMessageBox.CARD_BG)
         dialog.transient(parent)
         dialog.grab_set()
@@ -251,8 +251,8 @@ class StyledMessageBox:
         # Center dialog
         dialog.update_idletasks()
         x = (dialog.winfo_screenwidth() // 2) - (450 // 2)
-        y = (dialog.winfo_screenheight() // 2) - (350 // 2)  # Changed from 320 to 350
-        dialog.geometry(f"450x350+{x}+{y}")
+        y = (dialog.winfo_screenheight() // 2) - (450 // 2)  # Changed from 320 to 350
+        dialog.geometry(f"450x450+{x}+{y}")
         # Question icon and title
         header_frame = tk.Frame(dialog, bg=StyledMessageBox.CARD_BG)
         header_frame.pack(pady=30)

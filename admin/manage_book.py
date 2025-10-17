@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, filedialog
 from PIL import Image, ImageTk
 from admin.styled_message_box import StyledMessageBox
 import os
@@ -91,7 +91,7 @@ class AdminDashboard:
         tk.Label(
             title_container,
             text="◆",
-            font=("Helvetica", 24, "bold"),
+            font=("Helvetica", 32, "bold"),
             fg=self.ACCENT_GREEN,
             bg=self.NAVBAR_BG
         ).pack(side="left", padx=(0, 8))
@@ -99,7 +99,7 @@ class AdminDashboard:
         tk.Label(
             title_container,
             text="Admin",
-            font=("Helvetica", 18, "bold"),
+            font=("Helvetica", 24, "bold"),
             fg=self.ACCENT_PURPLE,
             bg=self.NAVBAR_BG
         ).pack(side="left")
@@ -107,7 +107,7 @@ class AdminDashboard:
         tk.Label(
             title_container,
             text="Portal",
-            font=("Helvetica", 18),
+            font=("Helvetica", 24),
             fg=self.TEXT_FG,
             bg=self.NAVBAR_BG
         ).pack(side="left", padx=(5, 0))
@@ -158,7 +158,7 @@ class AdminDashboard:
             text_label = tk.Label(
                 btn_inner,
                 text=text,
-                font=("Segoe UI", 9, "bold"),
+                font=("Segoe UI", 15, "bold"),
                 bg=self.NAVBAR_BG,
                 fg="#64748b"
             )
@@ -208,7 +208,7 @@ class AdminDashboard:
         tk.Label(
             user_container,
             text="●",
-            font=("Helvetica", 10),
+            font=("Helvetica", 15),
             fg=self.ACCENT_GREEN,
             bg="#253145"
         ).pack(side="left", padx=(12, 5))
@@ -216,7 +216,7 @@ class AdminDashboard:
         tk.Label(
             user_container,
             text=user_name,
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 15, "bold"),
             fg=self.TEXT_FG,
             bg="#253145"
         ).pack(side="left", padx=(0, 12), pady=8)
@@ -228,7 +228,7 @@ class AdminDashboard:
         logout_btn = tk.Button(
             logout_container,
             text="⏻  Logout",
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 15, "bold"),
             bg="#ef4444",
             fg="white",
             relief="flat",
