@@ -1043,7 +1043,7 @@ class AdminDashboard:
             )
         
         dialog.destroy()
-        self.show_book_management()
+        self.root.after(100, self.show_book_management)
         StyledMessageBox.show_success(self.root, "Success", "Book updated successfully!")
 
     def logout(self):

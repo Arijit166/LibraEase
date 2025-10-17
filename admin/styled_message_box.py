@@ -166,7 +166,7 @@ class StyledMessageBox:
         """Show warning message dialog"""
         dialog = tk.Toplevel(parent)
         dialog.title(title)
-        dialog.geometry("450x250")
+        dialog.geometry("450x325")
         dialog.configure(bg=StyledMessageBox.CARD_BG)
         dialog.transient(parent)
         dialog.grab_set()
@@ -175,8 +175,8 @@ class StyledMessageBox:
         # Center dialog
         dialog.update_idletasks()
         x = (dialog.winfo_screenwidth() // 2) - (450 // 2)
-        y = (dialog.winfo_screenheight() // 2) - (250 // 2)
-        dialog.geometry(f"450x250+{x}+{y}")
+        y = (dialog.winfo_screenheight() // 2) - (325 // 2)
+        dialog.geometry(f"450x325+{x}+{y}")
         
         # Warning icon and title
         header_frame = tk.Frame(dialog, bg=StyledMessageBox.CARD_BG)

@@ -636,8 +636,7 @@ class UserBooksPage:
             borrow_result = self.db.borrow_book(user_email, book['id'])
             
             if borrow_result['success']:
-                self.display_books()
-                StyledMessageBox.show_success(
+                self.root.after(50, lambda: StyledMessageBox.show_success(
                     self.root,
                     "Book Borrowed Successfully!",
                     f"'{book['name']}' has been borrowed!\n\n"
@@ -645,7 +644,8 @@ class UserBooksPage:
                     f"⏰ Return to library by: {borrow_result['return_deadline']}\n\n"
                     "⚠️ Failure to return on time will result in a fine of ₹2 per day.\n\n"
                     "Check 'Borrowed Books' section for details."
-                )
+                ))
+                self.root.after(100, self.display_books)
             else:
                 StyledMessageBox.show_error(self.root, "Error", borrow_result['message'])
     
