@@ -113,6 +113,13 @@ class DatabaseManager:
     def get_book_by_id(self, book_id):
         """Get book by ID"""
         df = pd.read_csv(self.books_file)
+        if len(df) == 0:
+            return None
+        
+        # Convert both to int for comparison
+        book_id = int(book_id)
+        df['id'] = df['id'].astype(int)
+        
         book = df[df['id'] == book_id]
         if len(book) > 0:
             return book.iloc[0]
@@ -177,6 +184,11 @@ class DatabaseManager:
         """Update book information"""
         df = pd.read_csv(self.books_file)
         
+        # Convert book_id to int for comparison
+        book_id = int(book_id)
+        if len(df) > 0:
+            df['id'] = df['id'].astype(int)
+        
         idx = df[df['id'] == book_id].index
         if len(idx) == 0:
             return False
@@ -189,12 +201,11 @@ class DatabaseManager:
             df.at[idx, 'author'] = author
         if image_path is not None:
             df.at[idx, 'image_path'] = image_path
-        if count is not None:  # Added
+        if count is not None:
             df.at[idx, 'count'] = count
         
         df.to_csv(self.books_file, index=False)
         return True
-
     # Add method to decrease count when borrowing:
     def decrease_book_count(self, book_id):
         """Decrease book count by 1"""
@@ -227,6 +238,11 @@ class DatabaseManager:
     def delete_book(self, book_id):
         """Delete book by ID"""
         df = pd.read_csv(self.books_file)
+        
+        # Convert book_id to int for comparison
+        book_id = int(book_id)
+        if len(df) > 0:
+            df['id'] = df['id'].astype(int)
         
         # Get image path before deleting
         book = df[df['id'] == book_id]

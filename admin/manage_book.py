@@ -1,9 +1,10 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from PIL import Image, ImageTk
-import json
+from admin.styled_message_box import StyledMessageBox
 import os
 import shutil
+
 
 class AdminDashboard:
     def __init__(self, root, main_app):
@@ -736,7 +737,7 @@ class AdminDashboard:
             count_str = count_entry.get().strip()
             
             if not name or not author or not book_id or not count_str:
-                messagebox.showerror("Error", "Please fill in all fields!")
+                StyledMessageBox.show_error(self.root, "Error", "Please fill in all fields!")
                 return
             
             try:
@@ -745,11 +746,11 @@ class AdminDashboard:
                 if count < 0:
                     raise ValueError
             except ValueError:
-                messagebox.showerror("Error", "Book ID and Count must be positive numbers!")
+                StyledMessageBox.show_error(self.root, "Error", "Book ID and Count must be positive numbers!")
                 return
             
             if self.db.get_book_by_id(book_id) is not None:
-                messagebox.showerror("Error", f"Book ID {book_id} already exists! Please use a unique ID.")
+                StyledMessageBox.show_error(self.root, "Error", f"Book ID {book_id} already exists! Please use a unique ID.")
                 return
             
             saved_image_path = None
@@ -760,13 +761,13 @@ class AdminDashboard:
                     saved_image_path = os.path.join(str(self.images_dir), new_filename)
                     shutil.copy2(image_path["path"], saved_image_path)
                 except Exception as e:
-                    messagebox.showwarning("Warning", f"Could not save image: {e}")
+                    StyledMessageBox.show_warning(self.root, "Warning", f"Could not save image: {e}")
             
             self.db.create_book_with_id(book_id, name, author, saved_image_path, count)
             
             dialog.destroy()
             self.show_book_management()
-            self.root.after(100, lambda: messagebox.showinfo("Success", "Book added successfully!"))
+            self.root.after(100, lambda: StyledMessageBox.show_success(self.root, "Success", "Book added successfully!"))
         
         add_book_btn = tk.Button(
             form_frame,
@@ -786,7 +787,7 @@ class AdminDashboard:
     def edit_book(self, book):
         dialog = tk.Toplevel(self.root)
         dialog.title("Edit Book")
-        dialog.geometry("500x600")
+        dialog.geometry("500x700")
         dialog.configure(bg=self.CARD_BG)
         dialog.transient(self.root)
         dialog.grab_set()
@@ -795,7 +796,7 @@ class AdminDashboard:
         dialog.update_idletasks()
         x = (dialog.winfo_screenwidth() // 2) - (500 // 2)
         y = (dialog.winfo_screenheight() // 2) - (600 // 2)
-        dialog.geometry(f"500x600+{x}+{y}")
+        dialog.geometry(f"500x700+{x}+{y}")
         
         # Header
         tk.Label(
@@ -838,6 +839,20 @@ class AdminDashboard:
         author_entry = tk.Entry(author_frame, font=("Helvetica", 12), relief="flat", bd=0, bg=self.INPUT_BG, fg=self.TEXT_FG, insertbackground=self.TEXT_FG)
         author_entry.insert(0, book['author'])
         author_entry.pack(fill="x", padx=15, pady=12)
+
+        tk.Label(
+            form_frame,
+            text="🔢 Book ID",
+            font=("Helvetica", 12, "bold"),
+            fg=self.TEXT_FG,
+            bg=self.CARD_BG
+        ).pack(anchor="w", pady=(15, 5))
+
+        id_frame = tk.Frame(form_frame, bg=self.INPUT_BG, highlightthickness=1, highlightbackground="#475569")
+        id_frame.pack(fill="x")
+        id_entry = tk.Entry(id_frame, font=("Helvetica", 12), relief="flat", bd=0, bg=self.INPUT_BG, fg=self.TEXT_FG, insertbackground=self.TEXT_FG)
+        id_entry.insert(0, str(book['id']))
+        id_entry.pack(fill="x", padx=15, pady=12)
 
         # Book Count
         tk.Label(
@@ -909,15 +924,19 @@ class AdminDashboard:
             relief="flat",
             cursor="hand2",
             activebackground="#5568d3",
-            command=lambda: self.update_book(book, name_entry, author_entry, image_path, count_entry, dialog)
+            command=lambda: self.update_book(book, name_entry, author_entry, image_path, count_entry, id_entry, dialog)
         )
         update_btn.pack(pady=30, ipadx=40, ipady=10)
         update_btn.bind("<Enter>", lambda e: update_btn.config(bg="#5568d3"))
         update_btn.bind("<Leave>", lambda e: update_btn.config(bg=self.ACCENT_PURPLE))
         
     def delete_book(self, book):
-        result = messagebox.askyesno(
-            "Confirm Delete",
+        # Force update to ensure UI is ready
+        self.root.update_idletasks()
+        
+        result = StyledMessageBox.ask_yes_no(
+            self.root, 
+            "Confirm Delete", 
             f"Are you sure you want to delete '{book['name']}'?\n\nThis action cannot be undone."
         )
         
@@ -938,55 +957,97 @@ class AdminDashboard:
             # Refresh the book display first
             self.show_book_management()
             
-            # Show success message after refresh using main_app root
-            self.main_app.root.after(100, lambda: messagebox.showinfo(
+            # Show success message after refresh
+            self.root.after(100, lambda: StyledMessageBox.show_success(
+                self.root, 
                 "Success", 
-                f"✅ '{book_name}' has been deleted successfully!"
+                f"'{book_name}' has been deleted successfully!"
             ))
 
-    def update_book(self, book, name_entry, author_entry, image_path, count_entry, dialog):
+    def update_book(self, book, name_entry, author_entry, image_path, count_entry, id_entry, dialog):
         name = name_entry.get().strip()
         author = author_entry.get().strip()
         count_str = count_entry.get().strip()
+        new_id_str = id_entry.get().strip()
         
-        if not name or not author or not count_str:
-            messagebox.showerror("Error", "Please fill in all fields!")
+        if not name or not author or not count_str or not new_id_str:
+            StyledMessageBox.show_error(self.root, "Error", "Please fill in all fields!")
             return
         
         try:
-            count = int(count_str)
-            if count < 0:
+            count = int(float(count_str))  
+            new_id = int(float(new_id_str))  
+            if count < 0 or new_id <= 0:
                 raise ValueError
         except ValueError:
-            messagebox.showerror("Error", "Count must be a positive number!")
+            StyledMessageBox.show_error(self.root, "Error", "Book ID and Count must be positive numbers!")
             return
         
-        saved_image_path = None
-        if image_path["path"] != book.get('image_path'):
-            if image_path["path"]:
+        # Convert book['id'] to int for proper comparison
+        old_id = int(book['id'])
+        
+        # Check if ID changed and if new ID already exists
+        if new_id != old_id:
+            if self.db.get_book_by_id(new_id) is not None:
+                StyledMessageBox.show_error(self.root, "Error", f"Book ID {new_id} already exists! Please use a unique ID.")
+                return
+            
+            # Delete old book and create with new ID
+            old_image_path = book.get('image_path')
+            self.db.delete_book(old_id)
+            
+            # Handle image
+            final_image_path = None
+            if image_path["path"] and image_path["path"] != old_image_path:
                 try:
                     ext = os.path.splitext(image_path["path"])[1]
-                    new_filename = f"book_{book['id']}{ext}"
+                    new_filename = f"book_{new_id}{ext}"
+                    final_image_path = os.path.join(str(self.images_dir), new_filename)
+                    shutil.copy2(image_path["path"], final_image_path)
+                except Exception as e:
+                    StyledMessageBox.show_warning(self.root, "Warning", f"Could not save image: {e}")
+                    final_image_path = old_image_path
+            elif old_image_path:
+                # Rename existing image file to match new ID
+                try:
+                    ext = os.path.splitext(old_image_path)[1]
+                    new_filename = f"book_{new_id}{ext}"
+                    final_image_path = os.path.join(str(self.images_dir), new_filename)
+                    if old_image_path != final_image_path:
+                        shutil.move(old_image_path, final_image_path)
+                    else:
+                        final_image_path = old_image_path
+                except Exception:
+                    final_image_path = old_image_path
+            
+            self.db.create_book_with_id(new_id, name, author, final_image_path, count)
+        else:
+            # ID unchanged, just update
+            final_image_path = book.get('image_path')
+            if image_path["path"] and image_path["path"] != book.get('image_path'):
+                try:
+                    ext = os.path.splitext(image_path["path"])[1]
+                    new_filename = f"book_{old_id}{ext}"
                     saved_image_path = os.path.join(str(self.images_dir), new_filename)
                     shutil.copy2(image_path["path"], saved_image_path)
+                    final_image_path = saved_image_path
                 except Exception as e:
-                    messagebox.showwarning("Warning", f"Could not save image: {e}")
-                    saved_image_path = book.get('image_path')
-        
-        self.db.update_book(
-            book['id'],
-            name=name,
-            author=author,
-            image_path=saved_image_path if saved_image_path else book.get('image_path'),
-            count=count
-        )
+                    StyledMessageBox.show_warning(self.root, "Warning", f"Could not save image: {e}")
+            
+            self.db.update_book(
+                old_id,
+                name=name,
+                author=author,
+                image_path=final_image_path,
+                count=count
+            )
         
         dialog.destroy()
         self.show_book_management()
-        messagebox.showinfo("Success", "Book updated successfully!")
-    
+        StyledMessageBox.show_success(self.root, "Success", "Book updated successfully!")
+
     def logout(self):
-        result = messagebox.askyesno("Logout", "Are you sure you want to logout?")
+        result = StyledMessageBox.ask_yes_no(self.root, "Logout", "Are you sure you want to logout?")
         if result:
             self.main_app.current_user = None
             self.main_app.show_welcome_screen()
