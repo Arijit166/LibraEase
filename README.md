@@ -1,6 +1,6 @@
-# 📘 LibraryEase
+# 📘 LibraEase
 
-LibraryEase is a Python-based Library Management System designed for small institutions and personal use. It offers a fully-featured GUI for managing books, members, borrow/return workflows, and analytics, with separate panels for admin and users.
+LibraEase is a Python-based Library Management System designed for small institutions and personal use. It offers a fully-featured GUI for managing books, members, borrow/return workflows, and analytics, with separate panels for admin and users.
 
 ## 🚀 Features
 ### Admin Panel
@@ -53,7 +53,7 @@ LibraryEase is a Python-based Library Management System designed for small insti
 
 ## 📁 Project Structure
 ```
-LibraryEase/
+LibraEase/
 │
 ├─ main.py                     # Entry point
 ├─ database.py                 # Handles CSV and data operations
@@ -77,8 +77,8 @@ LibraryEase/
 
 ### Clone the repository:
 ```
-git clone https://github.com/yourusername/LibraryEase.git
-cd LibraryEase
+git clone https://github.com/yourusername/LibraEase.git
+cd LibraEase
 ```
 
 ### Install dependencies:
